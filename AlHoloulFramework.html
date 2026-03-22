@@ -1885,6 +1885,10 @@ function show(page, element) {
   };
   document.getElementById('pg-title').textContent = titles[page] || 'Report';
 
+  // Auto-close sidebar on mobile after navigation
+  var sidebar = document.getElementById('sidebar');
+  if (sidebar) sidebar.classList.remove('mobile-open');
+
   // Scroll to top
   window.scrollTo(0, 0);
 }
