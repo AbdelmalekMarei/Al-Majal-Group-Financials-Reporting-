@@ -5,31 +5,597 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Al Majal Group – Executive Performance Dashboard</title>
 <script>
-/* ── Chart.js Multi-CDN Loader (3 fallbacks) ── */
-(function(){
-  var CDNS=[
-    'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js',
-    'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js',
-    'https://unpkg.com/chart.js@4.4.0/dist/chart.umd.min.js'
-  ];
-  var idx=0;
-  function tryLoad(){
-    var s=document.createElement('script');
-    s.src=CDNS[idx++];
-    s.onload=function(){ if(window.__dashReady) window.__dashReady(); };
-    s.onerror=function(){
-      if(idx<CDNS.length){ tryLoad(); }
-      else{
-        var st=document.getElementById('_load_status');
-        var er=document.getElementById('_load_error');
-        if(st) st.style.display='none';
-        if(er) er.style.display='block';
-      }
-    };
-    document.head.appendChild(s);
+/* ═══════════════════════════════════════════════════════════════════════
+   INLINE CHART ENGINE v3 — No CDN, full Chart.js-compatible API
+   Supports: bar, line, doughnut, pie, horizontalBar, mixed bar+line
+   ═══════════════════════════════════════════════════════════════════════ */
+(function(global){
+'use strict';
+var _registry={};
+
+/* ── Color utilities ── */
+function _hex2rgb(h){h=(h||'').replace('#','');if(h.length===3)h=h[0]+h[0]+h[1]+h[1]+h[2]+h[2];var n=parseInt(h,16)||0;return[(n>>16)&255,(n>>8)&255,n&255];}
+function _parseColor(c,a){
+  if(!c||c==='transparent')return'rgba(100,100,100,'+(a===undefined?1:a)+')';
+  try{
+    if(typeof c !== 'string') c = String(c);
+    if(c.startsWith('rgba(')){
+      if(a!==undefined) return c.replace(/,\s*[\d.]+\s*\)$/,','+a+')');
+      return c;
+    }
+    if(c.startsWith('rgb(')){return c.replace('rgb(','rgba(').replace(')',','+(a===undefined?1:a)+')');}
+    if(c.startsWith('#')){var r=_hex2rgb(c);return'rgba('+r[0]+','+r[1]+','+r[2]+','+(a===undefined?1:a)+')';}
+  }catch(e){}
+  return c;
+}
+function _nice(v){
+  if(v===undefined||v===null||isNaN(v))return'0';
+  if(Math.abs(v)>=1e6)return(v/1e6).toFixed(1)+'M';
+  if(Math.abs(v)>=1e3)return(v/1e3).toFixed(0)+'K';
+  return v.toFixed(1);
+}
+function _getColor(d,i){ return Array.isArray(d.backgroundColor)?d.backgroundColor[i%d.backgroundColor.length]:d.backgroundColor||'#1F2D5A'; }
+function _getBorderColor(d,i){ return d.borderColor||(Array.isArray(d.backgroundColor)?d.backgroundColor[i%d.backgroundColor.length]:d.backgroundColor)||'#1F2D5A'; }
+
+/* ── Layout constants ── */
+var PAD={top:30,right:24,bottom:54,left:62};
+
+/* ── Auto-scale ── */
+function _autoScale(vals,forceMin){
+  var clean=vals.filter(function(v){return typeof v==='number'&&isFinite(v);});
+  if(!clean.length)return{min:0,max:10,step:2};
+  var mn=Math.min.apply(null,clean.concat([forceMin!==undefined?forceMin:0]));
+  var mx=Math.max.apply(null,clean.concat([0]));
+  if(mn===mx){mn=mn-1;mx=mx+1;}
+  var range=mx-mn;
+  var step=Math.pow(10,Math.floor(Math.log10(range||1)));
+  if(range/step>6)step*=2; else if(range/step<3)step/=2;
+  mn=Math.floor(mn/step)*step;
+  mx=Math.ceil(mx/step)*step;
+  if(mx<=mn)mx=mn+step;
+  return{min:mn,max:mx,step:step};
+}
+
+/* ── Draw legend ── */
+function _drawLegend(ctx,datasets,W,H,pad,type){
+  var legY=H-6; var legX=pad.left;
+  datasets.forEach(function(d){
+    if(!d.label)return;
+    var isLine=(d.type==='line')||(type==='line');
+    var col=isLine?(d.borderColor||_getColor(d,0)):_getColor(d,0);
+    if(isLine){
+      ctx.save();ctx.strokeStyle=_parseColor(col,1);ctx.lineWidth=2;
+      ctx.beginPath();ctx.moveTo(legX,legY-4);ctx.lineTo(legX+12,legY-4);ctx.stroke();
+      ctx.restore();
+    } else {
+      ctx.fillStyle=_parseColor(col,1);ctx.fillRect(legX,legY-11,12,10);
+    }
+    ctx.fillStyle='#555';ctx.font='10px Segoe UI,Arial';ctx.textAlign='left';
+    ctx.fillText(d.label,legX+15,legY);
+    legX+=ctx.measureText(d.label).width+32;
+    if(legX>W-40){legX=pad.left;}
+  });
+}
+
+/* ══════════ TOOLTIP SYSTEM ══════════ */
+var _ttEl=null;
+function _ensureTT(){
+  if(_ttEl)return _ttEl;
+  _ttEl=document.createElement('div');
+  _ttEl.id='_ice_tt';
+  _ttEl.style.cssText='position:fixed;pointer-events:none;z-index:999999;background:rgba(15,25,55,0.94);color:#fff;padding:8px 13px;border-radius:8px;font:12px/1.55 "Segoe UI",Arial,sans-serif;box-shadow:0 4px 18px rgba(0,0,0,0.38);display:none;max-width:240px;white-space:nowrap;border:1px solid rgba(100,150,255,0.18);';
+  document.body.appendChild(_ttEl);
+  return _ttEl;
+}
+function _showTT(cx,cy,hit){
+  var t=_ensureTT();
+  var h='';
+  if(hit.label)h+='<div style="color:#90b8ff;font-size:11px;margin-bottom:1px">'+hit.label+'</div>';
+  if(hit.dataset)h+='<div style="color:#bbb;font-size:10px;margin-bottom:3px">'+hit.dataset+'</div>';
+  h+='<div style="font-size:14px;font-weight:700">'+hit.formatted+'</div>';
+  if(hit.pct)h+='<div style="color:#ffd666;font-size:11px;margin-top:2px">'+hit.pct+'</div>';
+  t.innerHTML=h;t.style.display='block';
+  var x=cx+16,y=cy-12;
+  t.style.left=x+'px';t.style.top=y+'px';
+  requestAnimationFrame(function(){
+    try{var tw=t.offsetWidth,th=t.offsetHeight;
+      if(x+tw>window.innerWidth-8){x=cx-tw-16;}
+      if(y+th>window.innerHeight-8){y=cy-th-12;}
+      if(y<4){y=4;}
+      t.style.left=x+'px';t.style.top=y+'px';
+    }catch(e){}
+  });
+}
+function _hideTT(){if(_ttEl)_ttEl.style.display='none';}
+
+/* ══════════ MIXED BAR + LINE CHART ══════════ */
+function _drawBar(canvas,cfg,hitData){
+  try{
+  var ctx=canvas.getContext('2d');
+  var W=canvas.width,H=canvas.height;
+  if(W<10||H<10)return;
+  ctx.clearRect(0,0,W,H);
+  var data=cfg.data||{},opts=cfg.options||{};
+  var labels=data.labels||[];
+  var datasets=data.datasets||[];
+  if(!labels.length||!datasets.length)return;
+
+  var stacked=(opts.scales&&((opts.scales.x&&opts.scales.x.stacked)||(opts.scales.y&&opts.scales.y.stacked)))||false;
+  var isHoriz=(cfg.type==='horizontalBar')||(opts.indexAxis==='y');
+
+  /* collect values for scale — separate bar and line datasets */
+  var barDS=datasets.filter(function(d){return d.type!=='line';});
+  var lineDS=datasets.filter(function(d){return d.type==='line';});
+  var allVals=[];
+  if(stacked){
+    var posSums=labels.map(function(_,i){return datasets.reduce(function(s,d){var v=d.data[i]||0;return v>0?s+v:s;},0);});
+    var negSums=labels.map(function(_,i){return datasets.reduce(function(s,d){var v=d.data[i]||0;return v<0?s+v:s;},0);});
+    allVals=posSums.concat(negSums);
+  } else {
+    datasets.forEach(function(d){allVals=allVals.concat(d.data||[]);});
   }
-  tryLoad();
-})();
+  var sc=_autoScale(allVals);
+
+  /* legend */
+  var showLeg=(opts.plugins&&opts.plugins.legend&&opts.plugins.legend.display===false)?false:(datasets.length>1||stacked);
+  var legRows=showLeg?1:0;
+  var legH=legRows*20;
+
+  /* title */
+  var titleH=0;
+  if(opts.plugins&&opts.plugins.title&&opts.plugins.title.display){
+    titleH=22;
+    ctx.save();ctx.font='bold 11px Segoe UI,Arial';ctx.fillStyle=opts.plugins.title.color||'#1F2D5A';
+    ctx.textAlign='center';ctx.fillText(opts.plugins.title.text||'',W/2,15);ctx.restore();
+  }
+
+  var pad={top:PAD.top+titleH,right:PAD.right,bottom:PAD.bottom+legH,left:PAD.left};
+  if(isHoriz)pad.left=Math.max(PAD.left,80);
+  var cW=W-pad.left-pad.right, cH=H-pad.top-pad.bottom;
+  if(cW<20||cH<20)return;
+
+  /* y-axis tick callback */
+  var tickCb=(opts.scales&&opts.scales.y&&opts.scales.y.ticks&&opts.scales.y.ticks.callback)||function(v){return _nice(v);};
+
+  if(!isHoriz){
+    /* grid lines + y-axis labels */
+    ctx.strokeStyle='rgba(0,0,0,0.07)';ctx.lineWidth=1;
+    for(var v=sc.min;v<=sc.max+sc.step*0.001;v+=sc.step){
+      var gy=pad.top+cH-(v-sc.min)/(sc.max-sc.min)*cH;
+      if(gy<pad.top-2||gy>pad.top+cH+2)continue;
+      ctx.beginPath();ctx.moveTo(pad.left,gy);ctx.lineTo(pad.left+cW,gy);ctx.stroke();
+      ctx.fillStyle='#777';ctx.font='9px Segoe UI,Arial';ctx.textAlign='right';
+      ctx.fillText(tickCb(v),pad.left-5,gy+3);
+    }
+    /* x-axis labels */
+    var bw=cW/Math.max(labels.length,1);
+    ctx.fillStyle='#555';ctx.font='9px Segoe UI,Arial';ctx.textAlign='center';
+    labels.forEach(function(lbl,i){
+      var x=pad.left+i*bw+bw/2;
+      var txt=String(lbl);if(txt.length>11)txt=txt.slice(0,10)+'\u2026';
+      ctx.fillText(txt,x,pad.top+cH+14);
+    });
+    /* x-axis line */
+    var baseY=pad.top+cH-(0-sc.min)/(sc.max-sc.min)*cH;
+    baseY=Math.max(pad.top,Math.min(pad.top+cH,baseY));
+    ctx.strokeStyle='#bbb';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(pad.left,baseY);ctx.lineTo(pad.left+cW,baseY);ctx.stroke();
+
+    /* draw bars (non-line datasets only) */
+    var nBarDS=barDS.length;
+    if(nBarDS>0){
+      var grpW=bw*0.80;
+      var dw=stacked?grpW:grpW/Math.max(nBarDS,1);
+      labels.forEach(function(lbl,i){
+        if(stacked){
+          var posStackY=baseY, negStackY=baseY;
+          datasets.forEach(function(d){
+            if(d.type==='line')return;
+            var val=+(d.data[i]||0);
+            var bH=Math.abs(val)/(sc.max-sc.min)*cH;
+            var col=_getColor(d,i);
+            ctx.fillStyle=_parseColor(col,1);
+            var bx=pad.left+i*bw+(bw-grpW)/2;
+            var brad=d.borderRadius||0;
+            if(val>=0){
+              ctx.beginPath();ctx.roundRect?ctx.roundRect(bx,posStackY-bH,grpW,bH,brad):ctx.rect(bx,posStackY-bH,grpW,bH);
+              ctx.fill();
+              if(hitData)hitData.push({type:'bar',bx:bx,by:posStackY-bH,bw:grpW,bh:bH,label:String(labels[i]),dataset:d.label||'',value:val,formatted:_nice(val)});
+              posStackY-=bH;
+            } else {
+              ctx.beginPath();ctx.roundRect?ctx.roundRect(bx,negStackY,grpW,bH,brad):ctx.rect(bx,negStackY,grpW,bH);
+              ctx.fill();
+              if(hitData)hitData.push({type:'bar',bx:bx,by:negStackY,bw:grpW,bh:bH,label:String(labels[i]),dataset:d.label||'',value:val,formatted:_nice(val)});
+              negStackY+=bH;
+            }
+          });
+        } else {
+          var bj=0;
+          datasets.forEach(function(d,j){
+            if(d.type==='line')return;
+            var val=+(d.data[i]||0);
+            var bH=Math.abs(val)/(sc.max-sc.min)*cH;
+            var col=_getColor(d,i);
+            ctx.fillStyle=_parseColor(col,1);
+            var bx=pad.left+i*bw+(bw-grpW)/2+bj*dw;
+            var by=val>=0?baseY-bH:baseY;
+            var brad=d.borderRadius||0;
+            if(bH>0.5){
+              ctx.beginPath();
+              ctx.roundRect?ctx.roundRect(bx,by,dw-1,bH,brad):ctx.rect(bx,by,dw-1,bH);
+              ctx.fill();
+              if(hitData)hitData.push({type:'bar',bx:bx,by:by,bw:dw-1,bh:bH,label:String(labels[i]),dataset:d.label||'',value:val,formatted:_nice(val)});
+            }
+            bj++;
+          });
+        }
+      });
+    }
+
+    /* draw line datasets on top of bars */
+    lineDS.forEach(function(d){
+      if(!d.data||!d.data.length)return;
+      var col=d.borderColor||_getColor(d,0);
+      var xStep=labels.length>1?bw:cW;
+      ctx.save();
+      if(d.fill!==false&&d.fill!==undefined&&d.fill!==null&&d.fill===true){
+        ctx.beginPath();
+        d.data.forEach(function(val,i){
+          var x=pad.left+i*bw+bw/2;
+          var y=pad.top+cH-(+(val||0)-sc.min)/(sc.max-sc.min)*cH;
+          i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+        });
+        ctx.lineTo(pad.left+(d.data.length-1)*bw+bw/2,baseY);
+        ctx.lineTo(pad.left+bw/2,baseY);ctx.closePath();
+        ctx.fillStyle=_parseColor(col,0.10);ctx.fill();
+      }
+      ctx.beginPath();
+      ctx.strokeStyle=_parseColor(col,1);
+      ctx.lineWidth=d.borderWidth||2.5;
+      ctx.lineJoin='round';ctx.lineCap='round';
+      d.data.forEach(function(val,i){
+        var x=pad.left+i*bw+bw/2;
+        var y=pad.top+cH-(+(val||0)-sc.min)/(sc.max-sc.min)*cH;
+        i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+      });
+      ctx.stroke();
+      var pr=d.pointRadius!==undefined?d.pointRadius:3;
+      if(pr>0){
+        d.data.forEach(function(val,i){
+          var x=pad.left+i*bw+bw/2;
+          var y=pad.top+cH-(+(val||0)-sc.min)/(sc.max-sc.min)*cH;
+          ctx.beginPath();ctx.arc(x,y,pr,0,2*Math.PI);
+          ctx.fillStyle=d.pointBackgroundColor||_parseColor(col,1);ctx.fill();
+          if(hitData)hitData.push({type:'point',px:x,py:y,pr:Math.max(pr,8),label:String(labels[i]),dataset:d.label||'',value:+(val||0),formatted:_nice(+(val||0))});
+        });
+      }
+      ctx.restore();
+    });
+
+  } else {
+    /* HORIZONTAL BAR */
+    var xTickCb=(opts.scales&&opts.scales.x&&opts.scales.x.ticks&&opts.scales.x.ticks.callback)||function(v){return _nice(v);};
+    var nBarDS2=barDS.length;
+    var bh=cH/Math.max(labels.length,1);
+    var grpH=bh*0.75;
+    var dh=grpH/Math.max(nBarDS2,1);
+    /* grid & x-labels */
+    ctx.fillStyle='#666';ctx.font='9px Segoe UI,Arial';ctx.textAlign='right';
+    labels.forEach(function(lbl,i){
+      var y=pad.top+i*bh+bh/2+4;
+      var txt=String(lbl);if(txt.length>14)txt=txt.slice(0,13)+'\u2026';
+      ctx.fillText(txt,pad.left-5,y);
+    });
+    var scH=_autoScale(datasets.reduce(function(a,d){return a.concat(d.data||[]);},[]));
+    ctx.strokeStyle='rgba(0,0,0,0.07)';ctx.lineWidth=1;
+    for(var vx=scH.min;vx<=scH.max+scH.step*0.001;vx+=scH.step){
+      var gx=pad.left+cW*(vx-scH.min)/(scH.max-scH.min);
+      ctx.beginPath();ctx.moveTo(gx,pad.top);ctx.lineTo(gx,pad.top+cH);ctx.stroke();
+      ctx.fillStyle='#777';ctx.font='9px Segoe UI,Arial';ctx.textAlign='center';
+      ctx.fillText(xTickCb(vx),gx,pad.top+cH+14);
+    }
+    var baseX=pad.left+cW*(-scH.min)/(scH.max-scH.min);
+    baseX=Math.max(pad.left,Math.min(pad.left+cW,baseX));
+    /* bars */
+    var bj2=0;
+    datasets.forEach(function(d){
+      d.data.forEach(function(val,i){
+        var bW=Math.abs(+(val||0))/(scH.max-scH.min)*cW;
+        var col=_getColor(d,i);
+        ctx.fillStyle=_parseColor(col,1);
+        var by=pad.top+i*bh+(bh-grpH)/2+bj2*dh;
+        if(+(val||0)>=0){ctx.fillRect(baseX,by,bW,dh-1);if(hitData)hitData.push({type:'bar',bx:baseX,by:by,bw:bW,bh:dh-1,label:String(labels[i]),dataset:d.label||'',value:+(val||0),formatted:_nice(+(val||0))});}
+        else{ctx.fillRect(baseX-bW,by,bW,dh-1);if(hitData)hitData.push({type:'bar',bx:baseX-bW,by:by,bw:bW,bh:dh-1,label:String(labels[i]),dataset:d.label||'',value:+(val||0),formatted:_nice(+(val||0))});}
+      });
+      bj2++;
+    });
+  }
+
+  /* legend */
+  if(showLeg) _drawLegend(ctx,datasets,W,H,pad,cfg.type);
+  }catch(e){ try{var ctx2=canvas.getContext('2d');ctx2.fillStyle='#999';ctx2.font='11px Arial';ctx2.fillText('Chart error: '+e.message,8,20);}catch(e2){} }
+}
+
+/* ══════════ LINE CHART ══════════ */
+function _drawLine(canvas,cfg,hitData){
+  try{
+  var ctx=canvas.getContext('2d');
+  var W=canvas.width,H=canvas.height;
+  if(W<10||H<10)return;
+  ctx.clearRect(0,0,W,H);
+  var data=cfg.data||{},opts=cfg.options||{};
+  var labels=data.labels||[];
+  var datasets=data.datasets||[];
+  if(!labels.length||!datasets.length)return;
+
+  var allVals=[];
+  datasets.forEach(function(d){(d.data||[]).forEach(function(v){if(typeof v==='number')allVals.push(v);});});
+  var sc=_autoScale(allVals);
+
+  var showLeg=(opts.plugins&&opts.plugins.legend&&opts.plugins.legend.display===false)?false:(datasets.length>1);
+  var legH=showLeg?20:0;
+  var titleH=0;
+  if(opts.plugins&&opts.plugins.title&&opts.plugins.title.display){
+    titleH=22;ctx.save();ctx.font='bold 11px Segoe UI,Arial';ctx.fillStyle=opts.plugins.title.color||'#1F2D5A';ctx.textAlign='center';ctx.fillText(opts.plugins.title.text||'',W/2,15);ctx.restore();
+  }
+  var pad={top:PAD.top+titleH,right:PAD.right,bottom:PAD.bottom+legH,left:PAD.left};
+  var cW=W-pad.left-pad.right,cH=H-pad.top-pad.bottom;
+  if(cW<20||cH<20)return;
+
+  var tickCb=(opts.scales&&opts.scales.y&&opts.scales.y.ticks&&opts.scales.y.ticks.callback)||function(v){return _nice(v);};
+  ctx.strokeStyle='rgba(0,0,0,0.07)';ctx.lineWidth=1;
+  for(var v=sc.min;v<=sc.max+sc.step*0.001;v+=sc.step){
+    var y=pad.top+cH-(v-sc.min)/(sc.max-sc.min)*cH;
+    ctx.beginPath();ctx.moveTo(pad.left,y);ctx.lineTo(pad.left+cW,y);ctx.stroke();
+    ctx.fillStyle='#777';ctx.font='9px Segoe UI,Arial';ctx.textAlign='right';ctx.fillText(tickCb(v),pad.left-5,y+3);
+  }
+  var xStep=labels.length>1?cW/(labels.length-1):cW;
+  ctx.fillStyle='#555';ctx.font='9px Segoe UI,Arial';ctx.textAlign='center';
+  labels.forEach(function(lbl,i){
+    var x=pad.left+(labels.length>1?i*xStep:cW/2);
+    var txt=String(lbl);if(txt.length>11)txt=txt.slice(0,10)+'\u2026';
+    ctx.fillText(txt,x,pad.top+cH+14);
+  });
+  ctx.strokeStyle='#ccc';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(pad.left,pad.top+cH);ctx.lineTo(pad.left+cW,pad.top+cH);ctx.stroke();
+
+  datasets.forEach(function(d){
+    var col=d.borderColor||(Array.isArray(d.backgroundColor)?d.backgroundColor[0]:d.backgroundColor)||'#1F2D5A';
+    ctx.save();
+    if(d.fill===true||d.fill===0){
+      ctx.beginPath();
+      (d.data||[]).forEach(function(val,i){
+        var x=pad.left+(labels.length>1?i*xStep:cW/2);
+        var y=pad.top+cH-(+(val||0)-sc.min)/(sc.max-sc.min)*cH;
+        i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+      });
+      ctx.lineTo(pad.left+(labels.length>1?(d.data.length-1)*xStep:cW/2),pad.top+cH);
+      ctx.lineTo(pad.left,pad.top+cH);ctx.closePath();
+      ctx.fillStyle=_parseColor(col,0.12);ctx.fill();
+    }
+    ctx.beginPath();
+    ctx.strokeStyle=_parseColor(col,1);ctx.lineWidth=d.borderWidth||2;ctx.lineJoin='round';ctx.lineCap='round';
+    (d.data||[]).forEach(function(val,i){
+      var x=pad.left+(labels.length>1?i*xStep:cW/2);
+      var y=pad.top+cH-(+(val||0)-sc.min)/(sc.max-sc.min)*cH;
+      i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+    });
+    ctx.stroke();
+    var pr=d.pointRadius!==undefined?d.pointRadius:3;
+    if(pr>0){
+      (d.data||[]).forEach(function(val,i){
+        var x=pad.left+(labels.length>1?i*xStep:cW/2);
+        var y=pad.top+cH-(+(val||0)-sc.min)/(sc.max-sc.min)*cH;
+        ctx.beginPath();ctx.arc(x,y,pr,0,2*Math.PI);
+        ctx.fillStyle=d.pointBackgroundColor||_parseColor(col,1);ctx.fill();
+        if(hitData)hitData.push({type:'point',px:x,py:y,pr:Math.max(pr,9),label:String(labels[i]),dataset:d.label||'',value:+(val||0),formatted:_nice(+(val||0))});
+      });
+    }
+    ctx.restore();
+  });
+  if(showLeg) _drawLegend(ctx,datasets,W,H,pad,'line');
+  }catch(e){ try{var ctx2=canvas.getContext('2d');ctx2.fillStyle='#999';ctx2.font='11px Arial';ctx2.fillText('Chart error: '+e.message,8,20);}catch(e2){} }
+}
+
+/* ══════════ DOUGHNUT / PIE CHART ══════════ */
+function _drawDoughnut(canvas,cfg,hitData){
+  try{
+  var ctx=canvas.getContext('2d');
+  var W=canvas.width,H=canvas.height;
+  if(W<10||H<10)return;
+  ctx.clearRect(0,0,W,H);
+  var data=cfg.data||{},opts=cfg.options||{};
+  var labels=data.labels||[];
+  var ds=(data.datasets||[])[0]||{};
+  var vals=ds.data||[];
+  var colors=ds.backgroundColor||['#1F2D5A','#C9A84C','#4e7bd4','#1A6B3C','#CC3300','#4ab4e8','#2d4a8a','#7a5c1e','#a8c5e0','#e8a030'];
+  var total=vals.reduce(function(s,v){return s+Math.abs(+(v||0));},0);
+  if(!total)return;
+
+  var titleH=0;
+  if(opts.plugins&&opts.plugins.title&&opts.plugins.title.display){
+    titleH=22;ctx.save();ctx.font='bold 11px Segoe UI,Arial';ctx.fillStyle=opts.plugins.title.color||'#1F2D5A';ctx.textAlign='center';ctx.fillText(opts.plugins.title.text||'',W/2,15);ctx.restore();
+  }
+  /* parse cutout: Chart.js uses "50%" or 50 */
+  var cutoutVal=opts.cutout||'60%';
+  var cutout=typeof cutoutVal==='string'?(parseFloat(cutoutVal)/100||0.6):(cutoutVal>1?cutoutVal/100:cutoutVal)||0.6;
+  var legPos=(opts.plugins&&opts.plugins.legend)?
+    (opts.plugins.legend.display===false?'none':(opts.plugins.legend.position||'bottom')):'bottom';
+  var legW=legPos==='right'?130:0;
+  var nLegRows=legPos==='bottom'?Math.ceil(labels.length/3):0;
+  var legH2=nLegRows*16+4;
+
+  var cxArea=W-legW, cyArea=H-titleH-legH2;
+  var cx=cxArea/2, cy=titleH+cyArea/2+4;
+  var r=Math.min(cxArea/2,cyArea/2)-8;
+  if(r<10)r=10;
+
+  var startAngle=-Math.PI/2;
+  vals.forEach(function(val,i){
+    var pct=Math.abs(+(val||0))/total;
+    var angle=pct*2*Math.PI;
+    var col=Array.isArray(colors)?colors[i%colors.length]:colors;
+    var sa=startAngle;
+    ctx.beginPath();ctx.moveTo(cx,cy);
+    ctx.arc(cx,cy,r,sa,sa+angle);
+    ctx.closePath();
+    ctx.fillStyle=_parseColor(col,1);ctx.fill();
+    ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();
+    if(hitData)hitData.push({type:'arc',cx:cx,cy:cy,ro:r,ri:r*cutout,sa:sa,ea:sa+angle,label:String(labels[i]||''),value:+(val||0),pct:(pct*100).toFixed(1)+'%',formatted:_nice(+(val||0))});
+    startAngle+=angle;
+  });
+  /* hole */
+  if(cutout>0){
+    ctx.beginPath();ctx.arc(cx,cy,r*cutout,0,2*Math.PI);
+    ctx.fillStyle='#fff';ctx.fill();
+  }
+  /* value labels inside segments for small sets */
+  if(vals.length<=8){
+    startAngle=-Math.PI/2;
+    vals.forEach(function(val,i){
+      var pct=Math.abs(+(val||0))/total;
+      var angle=pct*2*Math.PI;
+      if(pct>0.05){
+        var midAngle=startAngle+angle/2;
+        var lrOuter=(r*(cutout>0?(cutout+1)/2:0.7));
+        var lx=cx+Math.cos(midAngle)*lrOuter, ly=cy+Math.sin(midAngle)*lrOuter;
+        ctx.fillStyle='#fff';ctx.font='bold 9px Segoe UI,Arial';ctx.textAlign='center';
+        ctx.fillText((pct*100).toFixed(0)+'%',lx,ly+3);
+      }
+      startAngle+=angle;
+    });
+  }
+  /* legend */
+  if(legPos==='right'){
+    var lx=W-legW+6, ly=titleH+12;
+    labels.forEach(function(lbl,i){
+      var col=Array.isArray(colors)?colors[i%colors.length]:colors;
+      ctx.fillStyle=_parseColor(col,1);ctx.fillRect(lx,ly,10,10);
+      ctx.fillStyle='#444';ctx.font='9px Segoe UI,Arial';ctx.textAlign='left';
+      var txt=String(lbl);if(txt.length>15)txt=txt.slice(0,14)+'\u2026';
+      ctx.fillText(txt,lx+13,ly+9);ly+=16;
+    });
+  } else if(legPos==='bottom'){
+    var lx2=8,ly2=H-legH2+4;
+    labels.forEach(function(lbl,i){
+      var col=Array.isArray(colors)?colors[i%colors.length]:colors;
+      ctx.fillStyle=_parseColor(col,1);ctx.fillRect(lx2,ly2,10,10);
+      ctx.fillStyle='#444';ctx.font='9px Segoe UI,Arial';ctx.textAlign='left';
+      var txt=String(lbl);if(txt.length>13)txt=txt.slice(0,12)+'\u2026';
+      ctx.fillText(txt,lx2+13,ly2+9);
+      lx2+=ctx.measureText(txt).width+30;
+      if(lx2>W-30){lx2=8;ly2+=16;}
+    });
+  }
+  }catch(e){ try{var ctx2=canvas.getContext('2d');ctx2.fillStyle='#999';ctx2.font='11px Arial';ctx2.fillText('Chart error: '+e.message,8,20);}catch(e2){} }
+}
+
+/* ══════════ PUBLIC API ══════════ */
+function Chart(ctxOrCanvas,cfg){
+  try{
+    this._canvas=ctxOrCanvas.canvas||ctxOrCanvas;
+    this._cfg=cfg;
+    this._id=this._canvas.id;
+    this._hitData=[];
+    if(this._id) _registry[this._id]=this;
+    this._resize();
+    this._draw();
+    var self=this;
+    this._ro=null;
+    try{
+      if(typeof ResizeObserver!=='undefined'){
+        this._ro=new ResizeObserver(function(){
+          try{self._resize();self._draw();}catch(e){}
+        });
+        this._ro.observe(this._canvas.parentElement||this._canvas);
+      }
+    }catch(e){}
+    /* ── Tooltip mouse events ── */
+    try{
+      this._canvas.style.cursor='crosshair';
+      this._canvas.addEventListener('mousemove',function(e){
+        try{
+          var rect=self._canvas.getBoundingClientRect();
+          var sx=self._canvas.width/rect.width;
+          var sy=self._canvas.height/rect.height;
+          var mx=(e.clientX-rect.left)*sx;
+          var my=(e.clientY-rect.top)*sy;
+          var hit=self._hitTest(mx,my);
+          if(hit)_showTT(e.clientX,e.clientY,hit);
+          else _hideTT();
+        }catch(er){}
+      });
+      this._canvas.addEventListener('mouseleave',function(){_hideTT();});
+    }catch(e){}
+  }catch(e){console.warn('[Chart] constructor error:',e.message);}
+}
+Chart.prototype._resize=function(){
+  var canvas=this._canvas;
+  var parent=canvas.parentElement;
+  if(!parent) return;
+  /* Read from the canvas's own rendered CSS size (which is set to 100%/100%
+     of the container via CSS) — this is the only way to get the true
+     displayed pixel area and avoid stretching */
+  var w = canvas.clientWidth || canvas.offsetWidth || parent.clientWidth || parent.offsetWidth || 300;
+  var h = canvas.clientHeight || canvas.offsetHeight || parent.clientHeight || parent.offsetHeight || 200;
+  /* Clamp to reasonable values */
+  w = Math.max(w, 50); h = Math.max(h, 50);
+  if(canvas.width !== w)  canvas.width  = w;
+  if(canvas.height !== h) canvas.height = h;
+  /* Explicitly lock CSS display size to pixel buffer — prevents browser stretching */
+  canvas.style.width  = w + 'px';
+  canvas.style.height = h + 'px';
+};
+Chart.prototype._draw=function(){
+  this._hitData=[];
+  try{
+    var type=(this._cfg.type||'bar').toLowerCase();
+    if(type==='bar'||type==='horizontalBar')_drawBar(this._canvas,this._cfg,this._hitData);
+    else if(type==='line')_drawLine(this._canvas,this._cfg,this._hitData);
+    else if(type==='doughnut'||type==='pie')_drawDoughnut(this._canvas,this._cfg,this._hitData);
+  }catch(e){console.warn('[Chart] draw error:',e.message);}
+};
+Chart.prototype.update=function(){this._resize();this._draw();};
+Chart.prototype._hitTest=function(mx,my){
+  var hits=this._hitData||[];
+  /* iterate in reverse so top-drawn elements take priority */
+  for(var i=hits.length-1;i>=0;i--){
+    var h=hits[i];
+    if(h.type==='bar'){
+      if(mx>=h.bx&&mx<=h.bx+h.bw&&my>=h.by&&my<=h.by+h.bh)return h;
+    }else if(h.type==='point'){
+      var dx=mx-h.px,dy=my-h.py;
+      if(dx*dx+dy*dy<=(h.pr+5)*(h.pr+5))return h;
+    }else if(h.type==='arc'){
+      var dx2=mx-h.cx,dy2=my-h.cy;
+      var dist=Math.sqrt(dx2*dx2+dy2*dy2);
+      if(dist>=h.ri&&dist<=h.ro){
+        var a=Math.atan2(dy2,dx2);
+        /* bring a into the range [sa, sa+2π] */
+        while(a<h.sa-0.0001)a+=2*Math.PI;
+        while(a>h.sa+2*Math.PI+0.0001)a-=2*Math.PI;
+        if(a<=h.ea+0.0001)return h;
+      }
+    }
+  }
+  return null;
+};
+Chart.prototype.destroy=function(){
+  try{if(this._ro)this._ro.disconnect();}catch(e){}
+  if(this._id&&_registry[this._id]===this)delete _registry[this._id];
+  try{var ctx=this._canvas.getContext('2d');ctx.clearRect(0,0,this._canvas.width,this._canvas.height);}catch(e){}
+};
+Chart.getChart=function(id){return _registry[typeof id==='string'?id:(id&&id.id?id.id:'')]||null;};
+Chart.register=function(){};
+global.Chart=Chart;
+/* Signal ready immediately — no CDN wait */
+document.addEventListener('DOMContentLoaded',function(){
+  if(window.__dashReady) window.__dashReady();
+});
+if(document.readyState!=='loading'){
+  setTimeout(function(){if(window.__dashReady)window.__dashReady();},0);
+}
+})(window);
 </script>
 <style>
   :root{--navy:#1F2D5A;--gold:#C9A84C;--light:#F4F6FA;--white:#fff;--dark:#1A1A2E;--green:#1A6B3C;--red:#CC0000;--mid:#E8ECF2}
@@ -240,6 +806,7 @@
   .section-header p  { font-size:11px; }
   .chart-container.h300,.chart-container.h280 { height:210px !important; }
   .chart-container.h260,.chart-container.h240 { height:190px !important; }
+  .chart-container.h220 { height:175px !important; }
   .chart-container.h200 { height:160px !important; }
   .topbar-right .date-badge,
   .topbar-right .confidential-badge { display:none; }
@@ -250,6 +817,54 @@
   .filter-label { display:none; }
 }
 
+</style>
+<style>
+/* Canvas fill fix — canvas must match its container pixel-for-pixel */
+.chart-container { overflow:hidden; }
+.chart-container canvas {
+  display: block !important;
+  position: absolute !important;
+  top: 0 !important; left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+/* Ensure all height classes have a defined height so canvas can fill them */
+.chart-container.h220 { height:220px; }
+.chart-container.h240 { height:240px; }
+.chart-container.h260 { height:260px; }
+.chart-container.h280 { height:280px; }
+.chart-container.h300 { height:300px; }
+.chart-container.h320 { height:320px; }
+.chart-container.h350 { height:350px; }
+@media(max-width:900px){
+  .chart-container.h280,.chart-container.h300 { height:210px; }
+  .chart-container.h260,.chart-container.h240 { height:190px; }
+  .chart-container.h220 { height:175px; }
+}
+</style>
+<style>
+/* ── Al Majal Brand Color Consistency ── */
+/* Positive metrics */
+.kpi-change.positive, .trend-up, [class*="positive"] { color: #1A6B3C !important; }
+/* Negative metrics */
+.kpi-change.negative, .trend-down, [class*="negative"] { color: #CC3300 !important; }
+/* Section headers */
+.section-header h2 { color: #1F2D5A; border-left: 3px solid #C9A84C; padding-left: 10px; }
+/* Chart title bar accent */
+.chart-title { color: #1F2D5A; font-weight: 600; border-bottom: 2px solid rgba(201,168,76,0.25); padding-bottom: 6px; }
+/* KPI card value text */
+.kpi-card .kpi-val, .kpi-card .kpi-value { color: #1F2D5A; }
+/* KPI card accent line */
+.kpi-card { border-top: 3px solid #C9A84C; }
+.kpi-card:nth-child(2) { border-top-color: #4e7bd4; }
+.kpi-card:nth-child(3) { border-top-color: #1A6B3C; }
+.kpi-card:nth-child(4) { border-top-color: #CC3300; }
+/* Nav active item gold underline */
+.nav-item.active { border-left: 3px solid #C9A84C; }
+/* Table header accent */
+.data-table th, table thead th { background: #1F2D5A; color: #fff; }
+/* Axis / grid lines in charts rendered via canvas match brand */
+canvas { image-rendering: -webkit-optimize-contrast; image-rendering: crisp-edges; }
 </style>
 </head>
 <body>
@@ -301,12 +916,12 @@
     <div class="nav-item" onclick="showPage('table')"><span class="nav-icon">📋</span>Full Data Table</div>
     <div class="nav-divider"></div>
     <div class="nav-section-label">Financial Statements</div>
-    <div class="nav-item" onclick="showPage('incomestatement')"><span class="nav-icon">📑</span>Income Statement</div>
-    <div class="nav-item" onclick="showPage('balancesheet')"><span class="nav-icon">⚖️</span>Balance Sheet</div>
+    <div class="nav-item" onclick="showPage('incomestatement')"><span class="nav-icon">📑</span>Income Statement Consolidation</div>
+    <div class="nav-item" onclick="showPage('balancesheet')"><span class="nav-icon">⚖️</span>Balance Sheet Consolidation</div>
     <div class="nav-item" onclick="showPage('bank')"><span class="nav-icon">🏦</span>Bank Report</div>
     <div class="nav-item" onclick="showPage('ageing')"><span class="nav-icon">⏱️</span>AR / AP Ageing</div>
     <div class="nav-item" onclick="showPage('topbalances')"><span class="nav-icon">📊</span>Top Balances</div>
-    <div class="nav-item" onclick="showPage('cashflow')"><span class="nav-icon">💵</span>Cash Flow</div>
+    <div class="nav-item" onclick="showPage('cashflow')"><span class="nav-icon">💵</span>Cash Flow Consolidation</div>
     <div class="nav-item" onclick="showPage('ratios')"><span class="nav-icon">📊</span>Key Ratios</div>
     <div class="nav-item" onclick="showPage('snapshot')" style="margin-top:3px;background:rgba(201,168,76,0.06);border:1px dashed rgba(201,168,76,0.3);border-radius:7px"><span class="nav-icon">🗂️</span>CFO Snapshot</div>
     <div class="nav-divider"></div>
@@ -335,7 +950,7 @@
     </div>
   </div>
 
-  <div class="filter-bar">
+  <div class="filter-bar" style="display:none">
     <span class="filter-label">Year:</span>
     <select class="filter-select" id="yearFilter" onchange="applyFilters()">
       <option value="all">All Years</option>
@@ -1141,8 +1756,8 @@ const pageTitles = {
   margins: 'Profitability & Margins', spotlight: 'BU Spotlight',
   capex: 'CAPEX & Investment', historical: 'Group Historical',
   ytd: '2026 YTD Performance', table: 'Full Data Table', topbalances: 'Top Balances — CIT/PIT & Unearned',
-  incomestatement: 'Income Statement by Entity',
-  balancesheet: 'Balance Sheet Consolidated',
+  incomestatement: 'Income Statement Consolidation',
+  balancesheet: 'Balance Sheet Consolidation',
   bank: 'Bank Report',
   ageing: 'AR / AP Ageing Analysis',
   facilities: 'Bank Facilities — Limits & Utilization',
@@ -5879,15 +6494,22 @@ function renderSourceRef(name) {
 
   hdr.parentNode.insertBefore(bar, hdr.nextSibling);
 }
-// ── STARTUP (deferred until Chart.js ready) ──
+// ── STARTUP (deferred until ALL section overrides have executed) ──
 window.__dashReady = function(){
+  if(window.__dashReadyDone) return;   // prevent double-execution
+  window.__dashReadyDone = true;
   var loader = document.getElementById('_dash_loader');
   if(loader) loader.style.display = 'none';
   initFilters();
-  initPage('overview');
+  // showPage adds 'active' class first (canvas gets non-zero size), then inits charts
+  if(typeof showPage === 'function'){
+    showPage('overview');
+  } else {
+    initPage('overview');
+  }
 };
-// If Chart.js was already cached/loaded synchronously
-if(window.Chart){ window.__dashReady(); }
+// Defer to after current script finishes — so sections 27-31 overrides are in place
+setTimeout(function(){ if(window.__dashReady) window.__dashReady(); }, 0);
 
 // ══════════════════════════════════════════════════════════════════
 // GLOBAL FILTER HELPERS
@@ -11777,8 +12399,8 @@ window.initOverview = function(){
     '<div id="es-lbl-bu" style="font-size:11.5px;font-weight:700;color:'+NAVY+';padding:7px 12px;background:rgba(31,45,90,0.07);border-left:4px solid '+NAVY+';border-radius:4px;margin:18px 0 10px">'+
       '🏢 &nbsp;Business Unit Performance</div>'+
     '<div class="chart-row cols-2">'+
-      '<div class="chart-box"><div class="chart-title"><span></span><span id="es-bu-bar-lbl">Revenue & EBITDA by Business Unit</span></div><div class="chart-container h300"><canvas id="es-bu-bar26"></canvas></div></div>'+
-      '<div class="chart-box"><div class="chart-title"><span></span><span id="es-bu-donut-lbl">Revenue Contribution by BU</span></div><div class="chart-container h300"><canvas id="es-bu-donut26"></canvas></div></div>'+
+      '<div class="chart-box"><div class="chart-title"><span></span><span id="es-bu-bar-lbl">Business Unit Revenue & EBITDA</span></div><div class="chart-container h300"><canvas id="es-bu-bar26"></canvas></div></div>'+
+      '<div class="chart-box"><div class="chart-title"><span></span><span id="es-bu-donut-lbl">Revenue Contribution by Business Unit</span></div><div class="chart-container h300"><canvas id="es-bu-donut26"></canvas></div></div>'+
     '</div>'+
 
     // ── Row 3: Profitability ──────────────────────────────────────────
@@ -12130,8 +12752,9 @@ window.refreshExecTab = function(){
   if(sfxBU){
     var src2=buFilter?spots.filter(function(b){return b.bu===buFilter;}):spots.filter(function(b){return b['rev'+sfxBU]>0;});
     var srt=src2.slice().sort(function(a,b){return b['rev'+sfxBU]-a['rev'+sfxBU];});
-    if(lbl1)lbl1.textContent='Revenue & EBITDA by BU — '+(isJan26?'Jan 2026':'FY 2025')+(buFilter?' | '+buFilter:'');
-    if(lbl2)lbl2.textContent='Revenue Share — '+(isJan26?'Jan 2026':'FY 2025')+(buFilter?' | '+buFilter:'');
+    var pStr=isJan26?'January 2026':'Full Year 2025'; var bStr=buFilter?' \u2014 '+buFilter:' \u2014 All Business Units';
+    if(lbl1)lbl1.textContent='Business Unit Revenue & EBITDA \u2014 '+pStr+bStr;
+    if(lbl2)lbl2.textContent='Revenue Contribution by Business Unit \u2014 '+pStr+bStr;
     makeChart('es-bu-bar26',{type:'bar',data:{labels:srt.map(function(b){return b.bu;}),datasets:[
       {label:'Revenue',data:srt.map(function(b){return +(b['rev'+sfxBU]/1e6).toFixed(3);}),backgroundColor:'rgba(31,45,90,0.82)',borderRadius:4},
       {label:'EBITDA', data:srt.map(function(b){return +(b['ebitda'+sfxBU]/1e6).toFixed(3);}),
@@ -12148,8 +12771,8 @@ window.refreshExecTab = function(){
       plugins:{legend:{position:'right',labels:{font:{size:9},boxWidth:10}},
         tooltip:{callbacks:{label:function(ctx){return ctx.label+': $'+ctx.parsed.toFixed(2)+'M';}}}}}});
   } else {
-    if(lbl1)lbl1.textContent='Annual Revenue — '+activeYear+' highlighted';
-    if(lbl2)lbl2.textContent='Annual EBITDA — '+activeYear+' highlighted';
+    if(lbl1)lbl1.textContent='Group Revenue Trend — '+activeYear+' Selected';
+    if(lbl2)lbl2.textContent='Group EBITDA Trend — '+activeYear+' Selected';
     makeChart('es-bu-bar26',{type:'bar',data:{labels:YR_LABELS,datasets:[
       {label:'Revenue $M',data:REV_ANN.map(function(v){return +(v/1e6).toFixed(2);}),
        backgroundColor:YR_LABELS.map(function(y){return y===activeYear?GOLD:'rgba(31,45,90,0.75)';}),borderRadius:4}
@@ -12280,6 +12903,1189 @@ if(typeof pageTitles==='object') pageTitles['overview']='Executive Summary — A
 
 })();
 // END Section 30
+
+// ═══════════════════════════════════════════════════════════════════
+// SECTION 31: CEO Revenue Analysis — Full Rebuild
+// ═══════════════════════════════════════════════════════════════════
+(function(){
+'use strict';
+
+// ── Replace static Revenue page HTML ──────────────────────────────
+var revPage = document.getElementById('page-revenue');
+if(revPage){
+  revPage.innerHTML =
+    '<div class="section-header" style="margin-bottom:10px">'+
+      '<h2 style="margin:0">Revenue Analysis</h2>'+
+      '<p style="margin:4px 0 0;color:#666;font-size:12px">Latest Month | YTD | Historical · Click any KPI card or table row for detail</p>'+
+    '</div>'+
+    // 6-column KPI strip
+    '<div id="rv-kpi-strip" style="display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:14px"></div>'+
+    // Row 1: Monthly trend (full width)
+    '<div class="chart-box" style="margin-bottom:12px">'+
+      '<div class="chart-title"><span></span>Monthly Revenue — 2025 vs 2024 &amp; Jan 2026 <span style="font-size:10px;color:#888;font-weight:400">(Jan 2025: prev year bar)</span></div>'+
+      '<div class="chart-container h280"><canvas id="rv-mo-trend"></canvas></div>'+
+    '</div>'+
+    // Row 2: YTD cum + BU Donut
+    '<div class="chart-row cols-2" style="margin-bottom:12px">'+
+      '<div class="chart-box">'+
+        '<div class="chart-title"><span></span>Cumulative YTD Revenue — 2025 vs 2024</div>'+
+        '<div class="chart-container h260"><canvas id="rv-ytd-cum"></canvas></div>'+
+      '</div>'+
+      '<div class="chart-box">'+
+        '<div class="chart-title"><span></span>Revenue Share by BU — FY 2025 <span style="font-size:10px;color:#888;font-weight:400">(click row below for detail)</span></div>'+
+        '<div class="chart-container h260"><canvas id="rv-bu-donut"></canvas></div>'+
+      '</div>'+
+    '</div>'+
+    // Row 3: BU Jan 2026 vs Monthly Avg
+    '<div class="chart-box" style="margin-bottom:12px">'+
+      '<div class="chart-title"><span></span>Business Unit — Jan 2026 Actual vs FY 2025 Monthly Average</div>'+
+      '<div class="chart-container h320"><canvas id="rv-bu-jan"></canvas></div>'+
+    '</div>'+
+    // Row 4: Revenue Scorecard
+    '<div class="chart-box">'+
+      '<div class="chart-title"><span></span>Revenue Scorecard — All Business Units <span style="font-size:10px;color:#888;font-weight:400">(click row for full BU detail)</span></div>'+
+      '<div class="table-scroll"><table class="data-table" id="rv-table"></table></div>'+
+    '</div>'+
+    // Drill-down overlay
+    '<div id="rv-ov" style="display:none;position:fixed;inset:0;background:rgba(10,20,50,0.55);z-index:9500;align-items:flex-start;justify-content:center;padding-top:40px">'+
+      '<div id="rv-box" style="background:#fff;border-radius:12px;width:min(860px,95vw);max-height:82vh;overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,0.45)">'+
+        '<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:2px solid #1F2D5A;position:sticky;top:0;background:#fff;z-index:2">'+
+          '<div id="rv-dd-title" style="font-size:14px;font-weight:700;color:#1F2D5A"></div>'+
+          '<button onclick="document.getElementById(\'rv-ov\').style.display=\'none\'" style="background:#f4f6fa;border:none;font-size:16px;cursor:pointer;color:#666;padding:4px 10px;border-radius:6px">✕</button>'+
+        '</div>'+
+        '<div id="rv-dd-body" style="padding:18px 20px"></div>'+
+      '</div>'+
+    '</div>';
+}
+
+// ── Utility ────────────────────────────────────────────────────────
+var fM  = fmtM;
+var fU  = fmtUSD;
+var pct = function(n,d){ return d ? +((n/d)*100).toFixed(1) : 0; };
+var arw = function(v){
+  if(v===null||v===undefined||isNaN(v)) return '<span style="color:#aaa">—</span>';
+  var up = v>=0;
+  return '<span style="font-weight:700;color:'+(up?'#1A6B3C':'#CC0000')+'">'+(up?'▲ ':'▼ ')+Math.abs(v).toFixed(1)+'%</span>';
+};
+var pillar = function(col,lbl,val,sub){
+  return '<div style="background:#f8f9fc;border-radius:8px;padding:12px;border-top:3px solid '+col+'">'+
+    '<div style="font-size:9px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">'+lbl+'</div>'+
+    '<div style="font-size:19px;font-weight:800;color:#1F2D5A;line-height:1.1;margin-bottom:3px">'+val+'</div>'+
+    '<div style="font-size:10px;color:#666">'+sub+'</div></div>';
+};
+
+function openDD(title, html){
+  var ov = document.getElementById('rv-ov');
+  document.getElementById('rv-dd-title').textContent = title;
+  document.getElementById('rv-dd-body').innerHTML = html;
+  ov.style.display = 'flex';
+}
+
+// ── Main initRevenue override ──────────────────────────────────────
+window.initRevenue = function(){
+  var ga   = D.group_annual;
+  var mo25 = D.mo_2025 || {};
+  var mo24 = D.mo_2024 || {};
+  var fpd  = FP_DATA;
+  var kpis = fpd.group_kpis || {};
+  var ax   = function(){ return {ticks:{color:'#555',font:{size:10}},grid:{color:'rgba(0,0,0,0.05)'}}; };
+  var gIdx = function(yr){ return ga.Year.indexOf(yr); };
+
+  // ── Core figures ──
+  var rev25     = kpis.rev_2025     || 0;
+  var rev24     = kpis.rev_2024     || 0;
+  var revJ26    = kpis.rev_jan26    || 0;
+  var gp25      = kpis.gp_2025      || 0;
+  var gpJ26     = kpis.gp_jan26     || 0;
+  var ebitda25  = kpis.ebitda_2025  || 0;
+  var ebitdaJ26 = kpis.ebitda_jan26 || 0;
+
+  var rev25YoY  = rev24  > 0 ? pct(rev25-rev24, rev24)   : null;
+  var moRev25   = mo25.Revenue      || [];
+  var moRev24   = mo24.Revenue      || [];
+  var moLbls25  = mo25.Period_Label || [];
+
+  // Jan 2025 for YoY
+  var jan25Rev  = moRev25[0] || 0;
+  var j26vsJ25  = jan25Rev > 0 ? pct(revJ26-jan25Rev, jan25Rev) : null;
+
+  // Annualized run rate Jan 2026
+  var runRate   = revJ26 * 12;
+
+  // 10-year CAGR (2016→2025)
+  var rev2016   = ga.Revenue[gIdx(2016)] || 0;
+  var cagr10    = rev2016 > 0 ? (Math.pow(rev25/rev2016, 1/9)-1)*100 : 0;
+
+  // YTD 2025 vs YTD 2024 (12 months each)
+  var ytd25 = moRev25.reduce(function(s,v){ return s+v; }, 0);
+  var ytd24 = moRev24.reduce(function(s,v){ return s+v; }, 0);
+  var ytdYoY = ytd24 > 0 ? pct(ytd25-ytd24, ytd24) : null;
+
+  // BU data
+  var allBUs = D.bu_jan26 ? D.bu_jan26.BusinessUnit : [];
+  var buRows = allBUs.map(function(bu, i){
+    var jan26r  = (D.bu_jan26.Revenue      || [])[i] || 0;
+    var jan26gp = (D.bu_jan26.GrossProfit  || [])[i] || 0;
+    var jan26eb = (D.bu_jan26.EBITDA       || [])[i] || 0;
+    // FY 2025 for this BU (from bu_rev_2025)
+    var i25 = (D.bu_rev_2025.BusinessUnit || []).indexOf(bu);
+    var rev25bu = i25 >= 0 ? ((D.bu_rev_2025.Revenue||[])[i25]||0) : ((D.bu_rev_all[bu]||{})['2025']||0);
+    var gp25bu  = i25 >= 0 ? ((D.bu_rev_2025.GrossProfit||[])[i25]||0) : 0;
+    var eb25bu  = i25 >= 0 ? ((D.bu_rev_2025.EBITDA||[])[i25]||0)     : 0;
+    var rev24bu = (D.bu_rev_all[bu]||{})['2024'] || 0;
+    var moAvg   = rev25bu / 12;
+    var j26vsAvg = moAvg > 0 ? pct(jan26r - moAvg, moAvg) : null;
+    var yoy25    = rev24bu > 0 ? pct(rev25bu - rev24bu, rev24bu) : null;
+    return { bu:bu, jan26r:jan26r, jan26gp:jan26gp, jan26eb:jan26eb,
+             rev25:rev25bu, gp25:gp25bu, eb25:eb25bu, rev24:rev24bu,
+             gpPct25:pct(gp25bu,rev25bu), ebPct25:pct(eb25bu,rev25bu),
+             gpPctJ26:pct(jan26gp,jan26r), ebPctJ26:pct(jan26eb,jan26r),
+             moAvg:moAvg, j26vsAvg:j26vsAvg, yoy25:yoy25 };
+  }).filter(function(x){ return x.rev25 > 0 || x.jan26r > 0; })
+    .sort(function(a,b){ return b.rev25 - a.rev25; });
+
+  var totalRev25 = buRows.reduce(function(s,x){ return s+x.rev25; }, 0);
+  var topBUJ26   = buRows.slice().sort(function(a,b){ return b.jan26r-a.jan26r; })[0] || {bu:'—',jan26r:0};
+
+  // ── A. KPI Strip ──────────────────────────────────────────────
+  var strip = document.getElementById('rv-kpi-strip');
+  if(strip){
+    strip.innerHTML = '';
+    var mkKPI = function(icon,lbl,val,sub,accentColor,ddFn){
+      var d = document.createElement('div');
+      d.className = 'kpi-card';
+      d.style.cssText = 'cursor:pointer;border-top:3px solid '+accentColor+';padding:11px 12px 9px;position:relative;transition:box-shadow 0.15s';
+      d.innerHTML =
+        '<div style="font-size:16px;margin-bottom:3px">'+icon+'</div>'+
+        '<div style="font-size:9px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:2px">'+lbl+'</div>'+
+        '<div style="font-size:17px;font-weight:800;color:#1F2D5A;line-height:1;margin-bottom:3px">'+val+'</div>'+
+        '<div style="font-size:10px;color:#666;line-height:1.35">'+sub+'</div>'+
+        '<div style="position:absolute;top:7px;right:8px;font-size:9px;color:#C9A84C;font-weight:700">↗</div>';
+      d.onmouseover = function(){ d.style.boxShadow='0 4px 16px rgba(31,45,90,0.12)'; };
+      d.onmouseout  = function(){ d.style.boxShadow=''; };
+      if(ddFn) d.onclick = ddFn;
+      strip.appendChild(d);
+    };
+
+    // 1. Jan 2026 Revenue
+    mkKPI('💰','Jan 2026 Revenue',
+      '$'+fM(revJ26),
+      (j26vsJ25!==null?arw(j26vsJ25)+' vs Jan 2025':'—')+' | Jan 25: $'+fM(jan25Rev),
+      '#C9A84C',
+      function(){ ddMonthly(); }
+    );
+    // 2. FY 2025 Revenue
+    mkKPI('📊','FY 2025 Revenue',
+      '$'+fM(rev25),
+      (rev25YoY!==null?arw(rev25YoY)+' vs FY 2024':'—')+' | GP '+pct(gp25,rev25).toFixed(1)+'%',
+      '#1F2D5A',
+      function(){ ddAnnual(); }
+    );
+    // 3. YTD 2025 vs 2024
+    mkKPI('📅','YTD 2025 vs 2024',
+      '$'+fM(ytd25),
+      (ytdYoY!==null?arw(ytdYoY)+' vs YTD 2024':'—')+' | Prior: $'+fM(ytd24),
+      '#1A6B3C',
+      function(){ ddYTD(); }
+    );
+    // 4. Annualized Run Rate
+    mkKPI('📈','Jan 2026 Run Rate',
+      '$'+fM(runRate),
+      'Annualized (×12) | Jan 2026: $'+fM(revJ26),
+      '#7c3aed',
+      function(){ ddRunRate(); }
+    );
+    // 5. 10-Year CAGR
+    mkKPI('🏅','10-Year CAGR (2016→25)',
+      cagr10.toFixed(1)+'%',
+      '$'+fM(rev2016)+' → $'+fM(rev25) + ' (9 yrs)',
+      '#0d9488',
+      function(){ ddCAGR(); }
+    );
+    // 6. Top BU This Month
+    mkKPI('🏆','Top BU · Jan 2026',
+      topBUJ26.bu,
+      '$'+fM(topBUJ26.jan26r)+' | GP '+topBUJ26.gpPctJ26.toFixed(1)+'%',
+      '#e07b39',
+      function(){ ddBU(topBUJ26); }
+    );
+  }
+
+  // ── B. Monthly Bar Chart ──────────────────────────────────────
+  var moLabels = moLbls25.concat(['Jan 2026']);
+  var moBar25  = moRev25.map(function(v){ return +(v/1e6).toFixed(3); }).concat([null]);
+  var moBar24  = moRev24.map(function(v){ return +(v/1e6).toFixed(3); }).concat([null]);
+  var moBarJ26 = Array(moRev25.length).fill(null).concat([+(revJ26/1e6).toFixed(3)]);
+
+  makeChart('rv-mo-trend', {type:'bar', data:{labels:moLabels, datasets:[
+    {label:'2025', data:moBar25, backgroundColor:'rgba(31,45,90,0.82)', borderRadius:3},
+    {label:'2024', data:moBar24, backgroundColor:'rgba(78,123,212,0.45)', borderRadius:3},
+    {label:'Jan 2026', data:moBarJ26, backgroundColor:'rgba(201,168,76,0.92)', borderRadius:3}
+  ]}, options:{responsive:true, maintainAspectRatio:false,
+    plugins:{legend:{position:'bottom',labels:{font:{size:10}}},
+      tooltip:{mode:'index',intersect:false}},
+    scales:{x:{...ax(),ticks:{...ax().ticks,maxRotation:40,font:{size:9}}},
+      y:{...ax(),ticks:{...ax().ticks,callback:function(v){return '$'+v.toFixed(0)+'M';}}}}}});
+
+  // ── C. Cumulative YTD Bar ─────────────────────────────────────
+  var s25=0, s24=0, cum25=[], cum24=[];
+  moRev25.forEach(function(v,i){
+    s25+=v; cum25.push(+(s25/1e6).toFixed(2));
+    s24+=(moRev24[i]||0); cum24.push(+(s24/1e6).toFixed(2));
+  });
+  makeChart('rv-ytd-cum', {type:'bar', data:{labels:moLbls25, datasets:[
+    {label:'YTD 2025', data:cum25, backgroundColor:'rgba(31,45,90,0.80)', borderRadius:3},
+    {label:'YTD 2024', data:cum24, backgroundColor:'rgba(78,123,212,0.40)', borderRadius:3}
+  ]}, options:{responsive:true, maintainAspectRatio:false,
+    plugins:{legend:{position:'bottom',labels:{font:{size:10}}},
+      tooltip:{mode:'index',intersect:false}},
+    scales:{x:{...ax(),ticks:{...ax().ticks,maxRotation:40,font:{size:9}}},
+      y:{...ax(),ticks:{...ax().ticks,callback:function(v){return '$'+v.toFixed(0)+'M';}}}}}});
+
+  // ── D. BU Donut ───────────────────────────────────────────────
+  var dColors = ['#1F2D5A','#C9A84C','#CC3300','#1A6B3C','#4e7bd4','#e07b39','#7c3aed','#0d9488','#f59e0b','#ec4899','#adb5bd'];
+  var top10   = buRows.slice(0,10);
+  var othRev  = buRows.slice(10).reduce(function(s,x){return s+x.rev25;},0);
+  var dLabels = top10.map(function(x){return x.bu;}).concat(othRev>0?['Others']:[]);
+  var dData   = top10.map(function(x){return +(x.rev25/1e6).toFixed(2);}).concat(othRev>0?[+(othRev/1e6).toFixed(2)]:[]);
+  makeChart('rv-bu-donut',{type:'doughnut',data:{labels:dLabels,datasets:[{
+    data:dData,backgroundColor:dColors,borderWidth:2,borderColor:'#fff'
+  }]},options:{responsive:true,maintainAspectRatio:false,cutout:'52%',
+    plugins:{legend:{position:'right',labels:{font:{size:9},boxWidth:9}},
+      tooltip:{callbacks:{label:function(ctx){
+        var tot=dData.reduce(function(s,v){return s+v;},0);
+        return ctx.label+': $'+ctx.parsed.toFixed(1)+'M ('+(tot>0?(ctx.parsed/tot*100).toFixed(1):'0')+'%)';
+      }}}}}});
+
+  // ── E. BU Jan 2026 vs Monthly Avg (horizontal) ───────────────
+  var buJan = buRows.slice().filter(function(b){return b.jan26r>0;})
+                    .sort(function(a,b){return b.jan26r-a.jan26r;});
+  makeChart('rv-bu-jan',{type:'bar',data:{
+    labels:buJan.map(function(b){return b.bu;}),
+    datasets:[
+      {label:'Jan 2026 Actual', data:buJan.map(function(b){return +(b.jan26r/1e6).toFixed(3);}), backgroundColor:'rgba(201,168,76,0.88)',borderRadius:4},
+      {label:'FY 2025 Monthly Avg',data:buJan.map(function(b){return +(b.moAvg/1e6).toFixed(3);}), backgroundColor:'rgba(31,45,90,0.55)',borderRadius:4}
+    ]
+  },options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',
+    plugins:{legend:{position:'bottom',labels:{font:{size:10}}},
+      tooltip:{mode:'index',intersect:false,callbacks:{label:function(ctx){return ctx.dataset.label+': $'+ctx.parsed.x.toFixed(2)+'M';}}}},
+    scales:{x:{...ax(),ticks:{...ax().ticks,callback:function(v){return '$'+v.toFixed(1)+'M';}}},
+      y:{...ax(),ticks:{font:{size:9}}}}}});
+
+  // ── F. Revenue Scorecard Table ────────────────────────────────
+  var tbl = document.getElementById('rv-table');
+  if(tbl){
+    tbl.innerHTML =
+      '<thead><tr>'+
+        '<th style="text-align:center;width:32px">#</th>'+
+        '<th>Business Unit</th>'+
+        '<th class="num">Jan 2026</th>'+
+        '<th class="num">vs Avg</th>'+
+        '<th class="num">FY 2025</th>'+
+        '<th class="num">FY 2024</th>'+
+        '<th class="num">YoY 25/24</th>'+
+        '<th class="num">Share %</th>'+
+        '<th class="num">GP% (2025)</th>'+
+        '<th class="num">EBITDA% (2025)</th>'+
+      '</tr></thead><tbody>'+
+      buRows.map(function(b,i){
+        var share   = totalRev25>0?b.rev25/totalRev25*100:0;
+        var barW    = Math.min(share*3.2,100).toFixed(0);
+        var yoyCol  = b.yoy25===null?'#aaa':b.yoy25>=0?'#1A6B3C':'#CC0000';
+        var jvaCol  = b.j26vsAvg===null?'#aaa':b.j26vsAvg>=0?'#1A6B3C':'#CC0000';
+        var gpCol   = b.gpPct25>=30?'#1A6B3C':b.gpPct25>=15?'#C9A84C':'#CC0000';
+        var ebCol   = b.ebPct25>=20?'#1A6B3C':b.ebPct25>=5?'#C9A84C':'#CC0000';
+        return '<tr style="cursor:pointer" onclick="window._rv_ddBU && window._rv_ddBU(\''+b.bu.replace(/'/g,"\\'")+'\')" '+
+               'onmouseover="this.style.background=\'rgba(31,45,90,0.04)\'" onmouseout="this.style.background=\'\'">' +
+          '<td style="font-weight:700;color:#1F2D5A;text-align:center">'+(i+1)+'</td>'+
+          '<td style="font-weight:600">'+b.bu+'</td>'+
+          '<td class="num" style="font-weight:700;color:'+(b.jan26r>=b.moAvg?'#1A6B3C':'#CC0000')+'">'+fU(b.jan26r)+'</td>'+
+          '<td class="num" style="font-weight:600;color:'+jvaCol+'">'+
+            (b.j26vsAvg===null?'—':(b.j26vsAvg>=0?'▲':'▼')+Math.abs(b.j26vsAvg).toFixed(1)+'%')+'</td>'+
+          '<td class="num">'+fU(b.rev25)+'</td>'+
+          '<td class="num" style="color:#888">'+fU(b.rev24)+'</td>'+
+          '<td class="num" style="font-weight:600;color:'+yoyCol+'">'+
+            (b.yoy25===null?'—':(b.yoy25>=0?'▲':'▼')+Math.abs(b.yoy25).toFixed(1)+'%')+'</td>'+
+          '<td class="num"><div style="display:flex;align-items:center;gap:4px">'+
+            '<div style="flex:1;height:5px;background:#eef0f4;border-radius:3px;min-width:28px">'+
+              '<div style="width:'+barW+'%;height:100%;background:#1F2D5A;border-radius:3px"></div></div>'+
+            '<span style="font-size:10px;min-width:28px">'+share.toFixed(1)+'%</span></div></td>'+
+          '<td class="num" style="font-weight:600;color:'+gpCol+'">'+(b.gpPct25>0?b.gpPct25.toFixed(1)+'%':'—')+'</td>'+
+          '<td class="num" style="font-weight:600;color:'+ebCol+'">'+(b.ebPct25>0?b.ebPct25.toFixed(1)+'%':'—')+'</td>'+
+          '</tr>';
+      }).join('')+'</tbody>';
+  }
+
+  // ── G. Register global BU click handler ──────────────────────
+  window._rv_ddBU = function(buName){
+    var b = buRows.find ? buRows.find(function(x){return x.bu===buName;})
+            : (function(){ for(var i=0;i<buRows.length;i++) if(buRows[i].bu===buName) return buRows[i]; return null; })();
+    if(b) ddBU(b);
+  };
+
+  // ══════════════════════════════════════════════════════════════
+  // DRILL-DOWN FUNCTIONS
+  // ══════════════════════════════════════════════════════════════
+
+  // DD1: Monthly Detail — Jan 2026 vs Jan 2025 + full 2025 monthly table
+  function ddMonthly(){
+    var rows = moLbls25.map(function(lbl,i){
+      var v25 = moRev25[i]||0;
+      var v24 = moRev24[i]||0;
+      var chg = v24>0?pct(v25-v24,v24):null;
+      return '<tr>'+
+        '<td style="font-weight:600">'+lbl+'</td>'+
+        '<td class="num" style="font-weight:700">'+fU(v25)+'</td>'+
+        '<td class="num" style="color:#888">'+fU(v24)+'</td>'+
+        '<td class="num">'+arw(chg)+'</td>'+
+        '<td class="num" style="color:'+(v25>=v24?'#1A6B3C':'#CC0000');+'">'+(v25-v24>=0?'+':'')+fU(v25-v24)+'</td>'+
+      '</tr>';
+    });
+    rows.push('<tr style="background:rgba(201,168,76,0.10);font-weight:700;border-top:2px solid #C9A84C">'+
+      '<td style="color:#C9A84C">Jan 2026</td>'+
+      '<td class="num" style="color:#C9A84C">'+fU(revJ26)+'</td>'+
+      '<td class="num" style="color:#888">'+fU(jan25Rev)+'</td>'+
+      '<td class="num">'+arw(j26vsJ25)+'</td>'+
+      '<td class="num" style="color:'+(revJ26>=jan25Rev?'#1A6B3C':'#CC0000')+'">'+
+        (revJ26-jan25Rev>=0?'+':'')+fU(revJ26-jan25Rev)+'</td>'+
+    '</tr>');
+    openDD('Monthly Revenue Detail — FY 2025 vs FY 2024 + Jan 2026',
+      '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px">'+
+        pillar('#C9A84C','Jan 2026','$'+fM(revJ26), arw(j26vsJ25)+' vs Jan 2025')+
+        pillar('#1F2D5A','FY 2025 Total','$'+fM(rev25), arw(rev25YoY)+' vs FY 2024')+
+        pillar('#1A6B3C','Best Month 2025','$'+fM(Math.max.apply(null,moRev25)),
+          (mo25.Period_Label||[])[moRev25.indexOf(Math.max.apply(null,moRev25))]||'')+
+      '</div>'+
+      '<table class="data-table"><thead><tr><th>Month</th><th class="num">2025</th>'+
+      '<th class="num">2024</th><th class="num">YoY</th><th class="num">Δ</th></tr></thead>'+
+      '<tbody>'+rows.join('')+'</tbody></table>');
+  }
+
+  // DD2: Annual History
+  function ddAnnual(){
+    var rows = D.years.map(function(y){
+      var i   = gIdx(y);
+      var rev = ga.Revenue[i]||0;
+      var gp  = ga.GrossProfit[i]||0;
+      var ebd = ga.EBITDA[i]||0;
+      var prevI = gIdx(y-1);
+      var revP  = prevI>=0?(ga.Revenue[prevI]||0):0;
+      var chg   = revP>0?pct(rev-revP,revP):null;
+      return '<tr style="'+(y===2025?'background:rgba(201,168,76,0.08);font-weight:700':'')+'">'+
+        '<td style="font-weight:600">FY '+y+'</td>'+
+        '<td class="num">'+fU(rev)+'</td>'+
+        '<td class="num">'+arw(chg)+'</td>'+
+        '<td class="num">'+fU(gp)+'</td>'+
+        '<td class="num" style="color:'+(pct(gp,rev)>=30?'#1A6B3C':'#C9A84C')+'">'+(rev>0?pct(gp,rev).toFixed(1)+'%':'—')+'</td>'+
+        '<td class="num">'+fU(ebd)+'</td>'+
+        '<td class="num" style="color:'+(pct(ebd,rev)>=20?'#1A6B3C':'#C9A84C')+'">'+(rev>0?pct(ebd,rev).toFixed(1)+'%':'—')+'</td>'+
+      '</tr>';
+    });
+    rows.push('<tr style="background:rgba(201,168,76,0.08);font-weight:700">'+
+      '<td style="color:#C9A84C">Jan 2026 ×12</td>'+
+      '<td class="num" style="color:#C9A84C">'+fU(runRate)+'</td><td class="num">—</td>'+
+      '<td class="num" style="color:#C9A84C">'+fU(gpJ26*12)+'</td>'+
+      '<td class="num" style="color:#1A6B3C">'+pct(gpJ26,revJ26).toFixed(1)+'%</td>'+
+      '<td class="num" style="color:#C9A84C">'+fU(ebitdaJ26*12)+'</td>'+
+      '<td class="num" style="color:#1A6B3C">'+pct(ebitdaJ26,revJ26).toFixed(1)+'%</td>'+
+    '</tr>');
+    openDD('Annual Revenue History — Al Majal Group (2016–2025)',
+      '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px">'+
+        pillar('#1F2D5A','FY 2025 Revenue','$'+fM(rev25), arw(rev25YoY)+' vs FY 2024')+
+        pillar('#1A6B3C','GP Margin 2025',pct(gp25,rev25).toFixed(1)+'%', 'GP: $'+fM(gp25))+
+        pillar('#7c3aed','10Y CAGR',cagr10.toFixed(1)+'%','2016→2025 compound growth')+
+      '</div>'+
+      '<table class="data-table"><thead><tr><th>Year</th><th class="num">Revenue</th>'+
+      '<th class="num">YoY</th><th class="num">Gross Profit</th><th class="num">GP%</th>'+
+      '<th class="num">EBITDA</th><th class="num">EBITDA%</th></tr></thead>'+
+      '<tbody>'+rows.join('')+'</tbody></table>');
+  }
+
+  // DD3: YTD Month-by-Month
+  function ddYTD(){
+    var c25=0, c24=0;
+    var rows = moLbls25.map(function(lbl,i){
+      var v25=moRev25[i]||0, v24=moRev24[i]||0;
+      c25+=v25; c24+=v24;
+      var moYoY = v24>0?pct(v25-v24,v24):null;
+      var ytdYoY2 = c24>0?pct(c25-c24,c24):null;
+      return '<tr>'+
+        '<td>'+lbl+'</td>'+
+        '<td class="num" style="font-weight:600">'+fU(v25)+'</td>'+
+        '<td class="num" style="color:#888">'+fU(v24)+'</td>'+
+        '<td class="num">'+arw(moYoY)+'</td>'+
+        '<td class="num" style="font-weight:700;color:#1F2D5A">'+fU(c25)+'</td>'+
+        '<td class="num" style="color:#888">'+fU(c24)+'</td>'+
+        '<td class="num">'+arw(ytdYoY2)+'</td>'+
+      '</tr>';
+    });
+    openDD('YTD Revenue — Month-by-Month Progression (2025 vs 2024)',
+      '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px">'+
+        pillar('#1A6B3C','YTD 2025 (Full Year)','$'+fM(ytd25), arw(ytdYoY)+' vs YTD 2024')+
+        pillar('#4e7bd4','YTD 2024 (Full Year)','$'+fM(ytd24), 'Prior year baseline')+
+        pillar('#C9A84C','Δ 2025 vs 2024','$'+fM(ytd25-ytd24),(ytd25>ytd24?'+':'')+pct(ytd25-ytd24,ytd24).toFixed(1)+'%')+
+      '</div>'+
+      '<table class="data-table"><thead><tr>'+
+      '<th>Month</th><th class="num">Monthly 2025</th><th class="num">Monthly 2024</th><th class="num">MoM YoY</th>'+
+      '<th class="num">YTD 2025</th><th class="num">YTD 2024</th><th class="num">YTD YoY</th>'+
+      '</tr></thead><tbody>'+rows.join('')+'</tbody></table>');
+  }
+
+  // DD4: Run Rate — BU breakdown for Jan 2026
+  function ddRunRate(){
+    var rows = buRows.slice().sort(function(a,b){return b.jan26r-a.jan26r;}).map(function(b,i){
+      var ann = b.jan26r * 12;
+      var share = revJ26>0?pct(b.jan26r,revJ26):0;
+      return '<tr>'+
+        '<td style="font-weight:700;color:#1F2D5A">'+(i+1)+'</td>'+
+        '<td style="font-weight:600">'+b.bu+'</td>'+
+        '<td class="num" style="font-weight:700">'+fU(b.jan26r)+'</td>'+
+        '<td class="num" style="color:#7c3aed">'+fU(ann)+'</td>'+
+        '<td class="num">'+share.toFixed(1)+'%</td>'+
+        '<td class="num" style="font-weight:600;color:'+(b.j26vsAvg===null?'#aaa':b.j26vsAvg>=0?'#1A6B3C':'#CC0000')+'">'+
+          (b.j26vsAvg===null?'—':(b.j26vsAvg>=0?'▲':'▼')+Math.abs(b.j26vsAvg).toFixed(1)+'%')+'</td>'+
+      '</tr>';
+    });
+    openDD('Jan 2026 Revenue — BU Breakdown & Annualized Run Rate',
+      '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px">'+
+        pillar('#7c3aed','Jan 2026 Run Rate','$'+fM(runRate),'Annualized ×12')+
+        pillar('#C9A84C','Jan 2026 Actual','$'+fM(revJ26),arw(j26vsJ25)+' vs Jan 2025')+
+        pillar('#1A6B3C','FY 2025 Actual','$'+fM(rev25),'Full year comparison')+
+      '</div>'+
+      '<table class="data-table"><thead><tr><th>#</th><th>BU</th>'+
+      '<th class="num">Jan 2026</th><th class="num">Annualized ×12</th>'+
+      '<th class="num">Share</th><th class="num">vs FY Avg</th></tr></thead>'+
+      '<tbody>'+rows.join('')+'</tbody></table>');
+  }
+
+  // DD5: CAGR — Historical table with YoY and rolling CAGR
+  function ddCAGR(){
+    var rows = D.years.map(function(y,idx){
+      var i = gIdx(y), rev = ga.Revenue[i]||0;
+      var prevI = gIdx(y-1), revP = prevI>=0?(ga.Revenue[prevI]||0):0;
+      var chg = revP>0?pct(rev-revP,revP):null;
+      var cagr5 = idx>=5 ? (Math.pow(rev/(ga.Revenue[gIdx(D.years[idx-5])]||1),1/5)-1)*100 : null;
+      var cagr3 = idx>=3 ? (Math.pow(rev/(ga.Revenue[gIdx(D.years[idx-3])]||1),1/3)-1)*100 : null;
+      return '<tr style="'+(y===2025?'background:rgba(201,168,76,0.08);font-weight:700':'')+'">'+
+        '<td style="font-weight:600">FY '+y+'</td>'+
+        '<td class="num">'+fU(rev)+'</td>'+
+        '<td class="num">'+arw(chg)+'</td>'+
+        '<td class="num" style="color:'+(cagr3===null?'#aaa':cagr3>=0?'#7c3aed':'#CC0000')+'">'+
+          (cagr3===null?'—':cagr3.toFixed(1)+'%')+'</td>'+
+        '<td class="num" style="color:'+(cagr5===null?'#aaa':cagr5>=0?'#7c3aed':'#CC0000')+'">'+
+          (cagr5===null?'—':cagr5.toFixed(1)+'%')+'</td>'+
+      '</tr>';
+    });
+    openDD('Revenue CAGR Analysis — 10-Year Growth Track (2016–2025)',
+      '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px">'+
+        pillar('#7c3aed','10Y CAGR (2016→25)',cagr10.toFixed(1)+'%','$'+fM(rev2016)+' → $'+fM(rev25))+
+        pillar('#0d9488','FY 2025 Growth',arw(rev25YoY),'vs FY 2024: $'+fM(rev24))+
+        pillar('#1A6B3C','Total 9-Year Growth',pct(rev25-rev2016,rev2016).toFixed(0)+'%','$'+fM(rev25-rev2016)+' absolute gain')+
+      '</div>'+
+      '<table class="data-table"><thead><tr>'+
+      '<th>Year</th><th class="num">Revenue</th><th class="num">YoY Growth</th>'+
+      '<th class="num">3Y CAGR</th><th class="num">5Y CAGR</th></tr></thead>'+
+      '<tbody>'+rows.join('')+'</tbody></table>');
+  }
+
+  // DD6: BU Deep Dive
+  function ddBU(b){
+    var histRows = D.years.map(function(y){
+      var rev = (D.bu_rev_all[b.bu]||{})[String(y)] || 0;
+      if(!rev) return '';
+      var revP = (D.bu_rev_all[b.bu]||{})[String(y-1)] || 0;
+      var chg  = revP>0?pct(rev-revP,revP):null;
+      return '<tr>'+
+        '<td>FY '+y+'</td>'+
+        '<td class="num" style="font-weight:700">'+fU(rev)+'</td>'+
+        '<td class="num">'+arw(chg)+'</td>'+
+      '</tr>';
+    }).join('');
+    openDD('BU Deep Dive — '+b.bu,
+      '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px">'+
+        pillar('#C9A84C','Jan 2026 Revenue','$'+fM(b.jan26r),
+          (b.j26vsAvg!==null?arw(b.j26vsAvg)+' vs FY monthly avg':'—'))+
+        pillar('#1F2D5A','FY 2025 Revenue','$'+fM(b.rev25),
+          (b.yoy25!==null?arw(b.yoy25)+' vs FY 2024':'—'))+
+        pillar('#1A6B3C','FY 2025 GP% / EBITDA%',
+          (b.gpPct25>0?b.gpPct25.toFixed(1)+'%':'—'),
+          'EBITDA: '+(b.ebPct25>0?b.ebPct25.toFixed(1)+'%':'—'))+
+      '</div>'+
+      '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">'+
+        pillar('#4e7bd4','Jan 2026 GP%',(b.gpPctJ26>0?b.gpPctJ26.toFixed(1)+'%':'—'),'GP: $'+fM(b.jan26gp))+
+        pillar('#0d9488','Jan 2026 EBITDA%',(b.ebPctJ26>0?b.ebPctJ26.toFixed(1)+'%':'—'),'EBITDA: $'+fM(b.jan26eb))+
+        pillar('#7c3aed','FY Monthly Avg','$'+fM(b.moAvg),'Jan 2026 vs avg: '+(b.j26vsAvg!==null?arw(b.j26vsAvg):'—'))+
+      '</div>'+
+      '<table class="data-table"><thead><tr><th>Year</th><th class="num">Revenue</th><th class="num">YoY</th></tr></thead>'+
+      '<tbody>'+histRows+
+      '<tr style="background:rgba(201,168,76,0.10);font-weight:700"><td style="color:#C9A84C">Jan 2026</td>'+
+      '<td class="num" style="color:#C9A84C">'+fU(b.jan26r)+'</td>'+
+      '<td class="num">'+arw(b.j26vsAvg)+' vs avg</td></tr>'+
+      '</tbody></table>');
+  }
+
+  // ── Expose ddBU for chart click fallback ──
+  window._rv_ddBU = function(buName){
+    var found = null;
+    for(var i=0;i<buRows.length;i++){ if(buRows[i].bu===buName){found=buRows[i];break;} }
+    if(found) ddBU(found);
+  };
+};
+
+})();
+// END Section 31
+
+// ═══════════════════════════════════════════════════════════════
+// SECTION 33 — Profitability & Margins: Full 2-Year Comparative
+// KPIs: Jan 2025 vs Jan 2026 · Charts: FY2024 vs FY2025 grouped
+// ═══════════════════════════════════════════════════════════════
+(function(){
+'use strict';
+var _prevM = window.initMargins;
+window.initMargins = function(){
+  // Run the full existing chain first (renders pnl-trend, cost-struct, pnl-table, etc.)
+  if(typeof _prevM === 'function') _prevM();
+  try{
+    var mo25 = D.mo_2025 || {};
+    var mo24 = D.mo_2024 || {};
+    var fpd  = FP_DATA;
+    var kpis = fpd.group_kpis || {};
+    var ga   = D.group_annual;
+    var ax   = function(){ return {ticks:{color:'#555',font:{size:10}},grid:{color:'rgba(0,0,0,0.05)'}}; };
+    var pct  = function(n,d){ return d>0 ? parseFloat((n/d*100).toFixed(1)) : 0; };
+    // Local fmtM — needed because Section 32's fmtM is in a private IIFE scope
+    function fmtM(v){ var a=Math.abs(v); var s=a>=1e6?'$'+(a/1e6).toFixed(1)+'M':a>=1e3?'$'+(a/1e3).toFixed(0)+'K':'$'+a.toFixed(0); return v<0?'('+s+')':s; }
+    function fmtV(v){ return fmtM(v); }
+
+    // ── Annual figures ────────────────────────────────────────
+    var rev25  = kpis.rev_2025   || 0;
+    var rev24  = kpis.rev_2024   || 0;
+    var gp25   = kpis.gp_2025    || 0;
+    var ebd25  = kpis.ebitda_2025|| 0;
+    var ebd24  = kpis.ebitda_2024|| 0;
+    var gIdx   = function(yr){ return ga.Year.indexOf(yr); };
+    var gp24   = (ga.GrossProfit && ga.GrossProfit[gIdx(2024)]) || (rev24 - (ga.CoGS && ga.CoGS[gIdx(2024)] || 0));
+
+    // ── Jan 2025 from monthly data (index 0) ─────────────────
+    var revJ25 = (mo25.Revenue     || [])[0] || 0;
+    var gpJ25  = (mo25.GrossProfit || [])[0] || 0;
+    var ebJ25  = (mo25.EBITDA      || [])[0] || 0;
+
+    // ── Jan 2026 from KPIs ───────────────────────────────────
+    var revJ26 = kpis.rev_jan26    || 0;
+    var gpJ26  = kpis.gp_jan26     || 0;
+    var ebJ26  = kpis.ebitda_jan26 || 0;
+
+    // ── Computed margins ─────────────────────────────────────
+    var gpM25  = pct(gp25, rev25),   gpM24  = pct(gp24, rev24);
+    var emM25  = pct(ebd25, rev25),  emM24  = pct(ebd24, rev24);
+    var gpMJ26 = pct(gpJ26, revJ26), gpMJ25 = pct(gpJ25, revJ25);
+    var emMJ26 = pct(ebJ26, revJ26), emMJ25 = pct(ebJ25, revJ25);
+
+    // ── Arrow helper ─────────────────────────────────────────
+    function arw(curr, prev, suffix){
+      var d = parseFloat((curr - prev).toFixed(1));
+      var col = d >= 0 ? '#1A6B3C' : '#CC3300';
+      return '<span style="color:'+col+';font-weight:700">'+(d>=0?'▲ ':'▼ ')+Math.abs(d).toFixed(1)+(suffix||'pp')+'</span>';
+    }
+    function mkCard(l,v,s,c){
+      return '<div class="kpi-card '+c+'"><div class="kpi-label">'+l+'</div>'+
+        '<div class="kpi-value">'+v+'</div><div class="kpi-sub">'+s+'</div></div>';
+    }
+    function banner(text, col1, col2){
+      return '<div style="font-size:12.5px;font-weight:700;color:'+col1+';padding:7px 14px;background:'+col2+';border-left:4px solid '+col1+';border-radius:4px;margin-bottom:10px;grid-column:1/-1">'+text+'</div>';
+    }
+
+    // ── 1. KPI Cards — two clearly labelled comparison sections ─
+    var kd = document.getElementById('margin-kpis');
+    if(kd){
+      kd.innerHTML =
+        banner('📅  Jan 2025 vs Jan 2026 — YTD Comparison', '#C9A84C', 'rgba(201,168,76,0.10)') +
+        mkCard('GP Margin — Jan 2026', gpMJ26.toFixed(1)+'%',
+          'Jan 2025: '+gpMJ25.toFixed(1)+'% · '+arw(gpMJ26,gpMJ25), gpMJ26>=gpMJ25?'green':'') +
+        mkCard('EBITDA Margin — Jan 2026', emMJ26.toFixed(1)+'%',
+          'Jan 2025: '+emMJ25.toFixed(1)+'% · '+arw(emMJ26,emMJ25), 'accent') +
+        mkCard('Revenue — Jan 2026', fmtV(revJ26),
+          'Jan 2025: '+fmtV(revJ25)+' · '+arw(revJ25>0?(revJ26-revJ25)/revJ25*100:0,0,'%'), '') +
+        mkCard('Gross Profit — Jan 2026', fmtV(gpJ26),
+          'Jan 2025: '+fmtV(gpJ25)+' · '+arw(gpJ25>0?(gpJ26-gpJ25)/gpJ25*100:0,0,'%'), '') +
+        banner('📊  FY 2024 vs FY 2025 — Annual Comparison', '#1F2D5A', 'rgba(31,45,90,0.07)') +
+        mkCard('GP Margin — FY 2025', gpM25.toFixed(1)+'%',
+          'FY 2024: '+gpM24.toFixed(1)+'% · '+arw(gpM25,gpM24), gpM25>=gpM24?'green':'') +
+        mkCard('EBITDA Margin — FY 2025', emM25.toFixed(1)+'%',
+          'FY 2024: '+emM24.toFixed(1)+'% · '+arw(emM25,emM24), 'accent') +
+        mkCard('Revenue — FY 2025', fmtV(rev25),
+          'FY 2024: '+fmtV(rev24)+' · YoY '+arw((rev25-rev24)/rev24*100,0,'%'), '') +
+        mkCard('Gross Profit — FY 2025', fmtV(gp25),
+          'FY 2024: '+fmtV(gp24)+' · '+arw(gp24>0?(gp25-gp24)/gp24*100:0,0,'%'), '');
+    }
+
+    // ── 2. Monthly Margin Trend — GP% & EBITDA% 2024 vs 2025 + Jan 2026 YTD ─
+    var moLbls = (mo25.Period_Label || []).concat(['Jan 2026']);
+    var gpPct25 = (mo25.Revenue||[]).map(function(r,i){ return r>0?(mo25.GrossProfit||[])[i]/r*100:null; });
+    var gpPct24 = (mo24.Revenue||[]).map(function(r,i){ return r>0?(mo24.GrossProfit||[])[i]/r*100:null; });
+    var emPct25 = (mo25.Revenue||[]).map(function(r,i){ return r>0?(mo25.EBITDA||[])[i]/r*100:null; });
+    var emPct24 = (mo24.Revenue||[]).map(function(r,i){ return r>0?(mo24.EBITDA||[])[i]/r*100:null; });
+    // Append Jan 2026 as 13th point; 2024 lines stop at month 12
+    gpPct25 = gpPct25.concat([revJ26>0 ? gpJ26/revJ26*100 : null]);
+    gpPct24 = gpPct24.concat([null]);
+    emPct25 = emPct25.concat([revJ26>0 ? ebJ26/revJ26*100 : null]);
+    emPct24 = emPct24.concat([null]);
+
+    if(document.getElementById('c-mo-margin')){
+      makeChart('c-mo-margin', {type:'line', data:{
+        labels: moLbls,
+        datasets:[
+          {label:'GP% 2025 + Jan 26',  data:gpPct25, borderColor:'#C9A84C', backgroundColor:'rgba(201,168,76,0.07)', borderWidth:2.5, pointRadius:3, tension:0.3, fill:true, spanGaps:true},
+          {label:'GP% 2024',            data:gpPct24, borderColor:'#e8a030', borderWidth:1.8, pointRadius:2, tension:0.3, borderDash:[5,3], spanGaps:true},
+          {label:'EBITDA% 2025 + Jan 26',data:emPct25,borderColor:'#1F2D5A', backgroundColor:'rgba(31,45,90,0.04)', borderWidth:2.5, pointRadius:3, tension:0.3, fill:false, spanGaps:true},
+          {label:'EBITDA% 2024',         data:emPct24,borderColor:'#4e7bd4',  borderWidth:1.5, pointRadius:2, tension:0.3, borderDash:[4,3], spanGaps:true},
+        ]
+      }, options:{responsive:true, maintainAspectRatio:false,
+        plugins:{legend:{position:'bottom', labels:{font:{size:10}, boxWidth:10}},
+          tooltip:{mode:'index', intersect:false},
+          title:{display:true, text:'Monthly Margin Trend — FY 2024 vs FY 2025 + Jan 2026 YTD', color:'#1F2D5A'}},
+        scales:{
+          x:{...ax(), ticks:{...ax().ticks, maxRotation:40, font:{size:9}}},
+          y:{...ax(), ticks:{...ax().ticks, callback:function(v){ return v.toFixed(0)+'%'; }}}
+        }
+      }});
+    }
+
+    // ── 3. BU GP% — Grouped Bars FY 2024 vs FY 2025 ─────────
+    var buGPList = Object.keys(D.bu_rev_all).map(function(bu){
+      var r24 = (D.bu_rev_all[bu]||{})[2024] || 0;
+      var r25 = (D.bu_rev_all[bu]||{})[2025] || 0;
+      var g24 = (D.bu_gp_all&&D.bu_gp_all[bu]) ? (D.bu_gp_all[bu][2024]||0) : 0;
+      var g25 = (D.bu_gp_all&&D.bu_gp_all[bu]) ? (D.bu_gp_all[bu][2025]||0) : 0;
+      return {bu:bu, gp24:g24, gp25:g25, rev25:r25};
+    }).filter(function(x){ return x.rev25>500000 && (x.gp25>0||x.gp24>0); })
+      .sort(function(a,b){ return b.gp25-a.gp25; });
+
+    if(document.getElementById('c-gp-bu')){
+      makeChart('c-gp-bu', {type:'bar', data:{
+        labels: buGPList.map(function(x){ return x.bu; }),
+        datasets:[
+          {label:'GP% FY 2025', data:buGPList.map(function(x){ return +x.gp25.toFixed(1); }), backgroundColor:'rgba(31,45,90,0.82)', borderRadius:3},
+          {label:'GP% FY 2024', data:buGPList.map(function(x){ return +x.gp24.toFixed(1); }), backgroundColor:'rgba(201,168,76,0.72)', borderRadius:3},
+        ]
+      }, options:{responsive:true, maintainAspectRatio:false, indexAxis:'y',
+        plugins:{legend:{position:'bottom', labels:{font:{size:10}}},
+          title:{display:true, text:'GP Margin % by Business Unit — FY 2024 vs FY 2025', color:'#1F2D5A'},
+          tooltip:{mode:'index', intersect:false}},
+        scales:{
+          x:{...ax(), max:100, ticks:{...ax().ticks, callback:function(v){ return v+'%'; }}},
+          y:{...ax(), ticks:{font:{size:9}}}
+        }
+      }});
+    }
+
+    // ── 4. BU EBITDA% — Grouped Bars FY 2024 vs FY 2025 ─────
+    var buEMList = Object.keys(D.bu_rev_all).map(function(bu){
+      var r24 = (D.bu_rev_all[bu]||{})[2024] || 0;
+      var r25 = (D.bu_rev_all[bu]||{})[2025] || 0;
+      var e24 = (D.bu_ebitda_all&&D.bu_ebitda_all[bu]) ? (D.bu_ebitda_all[bu][2024]||0) : 0;
+      var e25 = (D.bu_ebitda_all&&D.bu_ebitda_all[bu]) ? (D.bu_ebitda_all[bu][2025]||0) : 0;
+      return {bu:bu, em24:r24>0?pct(e24,r24):0, em25:r25>0?pct(e25,r25):0, rev25:r25};
+    }).filter(function(x){ return x.rev25>500000; })
+      .sort(function(a,b){ return b.em25-a.em25; });
+
+    if(document.getElementById('c-ebitda-bu')){
+      makeChart('c-ebitda-bu', {type:'bar', data:{
+        labels: buEMList.map(function(x){ return x.bu; }),
+        datasets:[
+          {label:'EBITDA% FY 2025', data:buEMList.map(function(x){ return +x.em25.toFixed(1); }), backgroundColor:'rgba(31,45,90,0.82)', borderRadius:3},
+          {label:'EBITDA% FY 2024', data:buEMList.map(function(x){ return +x.em24.toFixed(1); }), backgroundColor:'rgba(201,168,76,0.72)', borderRadius:3},
+        ]
+      }, options:{responsive:true, maintainAspectRatio:false, indexAxis:'y',
+        plugins:{legend:{position:'bottom', labels:{font:{size:10}}},
+          title:{display:true, text:'EBITDA Margin % by Business Unit — FY 2024 vs FY 2025', color:'#1F2D5A'},
+          tooltip:{mode:'index', intersect:false}},
+        scales:{
+          x:{...ax(), ticks:{...ax().ticks, callback:function(v){ return v+'%'; }}},
+          y:{...ax(), ticks:{font:{size:9}}}
+        }
+      }});
+    }
+
+    // ── 5. Update static chart title labels in page HTML ─────
+    var chartBoxes = document.querySelectorAll('#page-margins .chart-title');
+    chartBoxes.forEach(function(el){
+      if(el.textContent.indexOf('GP Margin by Business Unit')>=0)
+        el.innerHTML = '<span></span>GP Margin % by BU \u2014 FY 2024 vs FY 2025';
+      if(el.textContent.indexOf('EBITDA Margin by Business Unit')>=0)
+        el.innerHTML = '<span></span>EBITDA Margin % by BU \u2014 FY 2024 vs FY 2025';
+      if(el.textContent.indexOf('Monthly')>=0&&el.textContent.indexOf('Margin')>=0)
+        el.innerHTML = '<span></span>Monthly Margin Trend \u2014 FY 2024 vs FY 2025 + Jan 2026 YTD';
+    });
+
+    // ── 6. Update page section header ────────────────────────
+    var sh = document.querySelector('#page-margins .section-header p');
+    if(sh) sh.textContent = 'Group Consolidated \u2014 FY 2024 vs FY 2025 Annual | Jan 2025 vs Jan 2026 YTD | All figures USD';
+
+  }catch(e){ console.error('[Section33] initMargins error:', e); }
+};
+})();
+// END Section 33
+
+// ═══════════════════════════════════════════════════════════════
+// SECTION 34 — Cash Flow: Professional Redesign
+// Clean, clearly labelled charts with proper context
+// ═══════════════════════════════════════════════════════════════
+(function(){
+'use strict';
+window.initCashFlow = function(){
+try{
+  var fpd   = FP_DATA;
+  var kpis  = fpd.group_kpis;
+  var mo25  = D.mo_2025 || {}, mo24 = D.mo_2024 || {};
+  var buF   = gBU();
+  var isBU  = buF !== 'all';
+
+  // ── Formatters ──
+  function fmtM(v){
+    var a=Math.abs(v);
+    var s=a>=1e6?'$'+(a/1e6).toFixed(1)+'M':a>=1e3?'$'+(a/1e3).toFixed(0)+'K':'$'+a.toFixed(0);
+    return v<0?'('+s+')':s;
+  }
+  function pct(n,d){ return d>0?parseFloat((n/d*100).toFixed(1)):0; }
+  function ax(){ return {ticks:{color:'#555',font:{size:10}},grid:{color:'rgba(0,0,0,0.06)'}}; }
+
+  // ── Core Consolidated figures ──
+  var ebitda25=kpis.ebitda_2025||0, ebitda26=kpis.ebitda_jan26||0;
+  var capex25=kpis.capex_2025||0,   capex26=kpis.capex_jan26||0;
+  var rev25=kpis.rev_2025||0,       rev26=kpis.rev_jan26||0;
+  var da25=10622204, da26=991548, ni25=41860804, ni26=2731469;
+  var cashDec25=13063847;
+  var cashJan26 = (fpd.bs26&&fpd.bs26.rows&&fpd.bs26.rows['Cash And Cash Equiv']) ? fpd.bs26.rows['Cash And Cash Equiv'][12] : 0;
+  var ocf25=ni25+da25, ocf26=ni26+da26;
+  var fcf25=ocf25-capex25, fcf26=ocf26-capex26;
+  var netChg26=cashJan26-cashDec25;
+  var other26=netChg26-ocf26+capex26;
+
+  // ── BU-specific figures ──
+  var buEB25=ebitda25, buEB26=ebitda26, buC25=capex25, buC26=capex26, buR25=rev25, buR26=rev26;
+  if(isBU){
+    var spot=(fpd.bu_spotlight||[]).find(function(b){
+      return b.bu===buF||(b.bu||'').replace(/\s/g,'')===buF.replace(/\s/g,'');
+    });
+    if(spot){ buEB25=spot.ebitda_2025||0; buEB26=spot.ebitda_jan26||0; buC25=spot.capex_2025||0; buC26=spot.capex_jan26||0; buR25=spot.rev_2025||0; buR26=spot.rev_jan26||0; }
+    else{
+      buR25=(D.bu_rev_all[buF]||{})[2025]||0;
+      buEB25=(D.bu_ebitda_all&&D.bu_ebitda_all[buF])?(D.bu_ebitda_all[buF][2025]||0):0;
+      var ci=(D.capex_2025&&D.capex_2025.BusinessUnit||[]).indexOf(buF);
+      buC25=ci>=0?((D.capex_2025&&D.capex_2025.CAPEX&&D.capex_2025.CAPEX[ci])||0):0;
+    }
+  }
+  var buFCF25=buEB25-buC25, buFCF26=buEB26-buC26;
+  var lbl=isBU?buF:'Group';
+
+  // ── KPI Cards ──
+  var kd=document.getElementById('cf-kpis');
+  if(kd){
+    function mkC(l,v,s,c){ return '<div class="kpi-card '+c+'"><div class="kpi-label">'+l+'</div><div class="kpi-value">'+v+'</div><div class="kpi-sub">'+s+'</div></div>'; }
+    var capexRatio = buEB25>0?pct(buC25,buEB25):0;
+    var convRate   = buEB25>0?pct(buFCF25,buEB25):0;
+    var emPct25    = pct(buEB25,buR25);
+    var emPct26    = pct(buEB26,buR26);
+    var fcfPct26   = buEB26>0?pct(buFCF26,buEB26):0;
+    kd.innerHTML =
+      mkC('EBITDA — FY 2025 ('+lbl+')',    fmtM(buEB25),  emPct25.toFixed(1)+'% margin | Ann. 2026 run rate: '+fmtM(buEB26*12), 'accent') +
+      mkC('Free Cash Flow — FY 2025',       fmtM(buFCF25), 'FCF conversion: '+convRate.toFixed(0)+'% of EBITDA (EBITDA \u2212 CAPEX)', buFCF25>=0?'green':'') +
+      mkC('CAPEX — FY 2025 ('+lbl+')',      fmtM(buC25),   capexRatio.toFixed(1)+'% of EBITDA | Jan 2026 ann. pace: '+fmtM(buC26*12), '') +
+      mkC('Jan 2026 Flash ('+lbl+')',        fmtM(buEB26),  'FCF: '+fmtM(buFCF26)+' | EBITDA margin: '+emPct26.toFixed(1)+'%', buFCF26>=0?'green':'') +
+      mkC('Operating Cash Flow — FY 2025',  fmtM(isBU?buEB25:ocf25), isBU?'EBITDA-based':'NI '+fmtM(ni25)+' + D\u0026A '+fmtM(da25), '') +
+      mkC(isBU?'Revenue Jan 2026 ('+lbl+')':'Cash Balance — Jan 2026',
+          isBU?fmtM(buR26):fmtM(cashJan26),
+          isBU?emPct26.toFixed(1)+'% EBITDA margin':(netChg26>=0?'\u25b2 ':'\u25bc ')+fmtM(Math.abs(netChg26))+' vs Dec-25',
+          isBU?'':(netChg26>=0?'green':''));
+  }
+
+  // ── Chart 1: Monthly EBITDA — FY 2024 vs FY 2025, Jan 2026 highlighted ──
+  var moLbls = (mo25.Period_Label||[]).concat(['Jan 2026']);
+  var ebd25  = (mo25.EBITDA||[]).map(function(v){ return +(v/1e6).toFixed(2); });
+  var ebd24  = (mo24.EBITDA||[]).map(function(v){ return +(v/1e6).toFixed(2); });
+  if(document.getElementById('cf-main-chart')){
+    makeChart('cf-main-chart',{type:'bar',data:{
+      labels: moLbls,
+      datasets:[
+        {label:'EBITDA FY 2025 ($M)',  data:ebd25.concat([null]),                          backgroundColor:'rgba(31,45,90,0.82)',  borderRadius:4},
+        {label:'EBITDA FY 2024 ($M)',  data:ebd24.concat([null]),                          backgroundColor:'rgba(201,168,76,0.60)',borderRadius:4},
+        {label:'Jan 2026 EBITDA ($M)', data:Array(12).fill(null).concat([+(buEB26/1e6).toFixed(2)]), backgroundColor:'rgba(26,107,60,0.90)', borderRadius:6},
+      ]
+    },options:{responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{position:'bottom',labels:{font:{size:10},boxWidth:10}},
+        title:{display:true,text:'Monthly EBITDA Trend \u2014 FY 2024 vs FY 2025 | Jan 2026 \u25cf',font:{size:12,weight:'600'},color:'#1F2D5A'}
+      },
+      scales:{
+        x:{...ax(),ticks:{...ax().ticks,maxRotation:40,font:{size:9}}},
+        y:{...ax(),title:{display:true,text:'$M',color:'#555',font:{size:10}},ticks:{...ax().ticks,callback:function(v){return '$'+v.toFixed(0)+'M';}}}
+      }
+    }});
+  }
+
+  // ── Chart 2: OCF / CAPEX / FCF Summary — FY 2025 vs Jan 2026 ──
+  if(document.getElementById('cf-fcf-donut')){
+    makeChart('cf-fcf-donut',{type:'bar',data:{
+      labels:['Operating Cash Flow (OCF)','Capital Expenditure (CAPEX)','Free Cash Flow (FCF)'],
+      datasets:[
+        {label:'FY 2025 ('+lbl+')', data:[+(isBU?buEB25:ocf25)/1e6,+(buC25/1e6),+(buFCF25/1e6)].map(function(v){return +v.toFixed(2);}), backgroundColor:'rgba(31,45,90,0.82)', borderRadius:4},
+        {label:'Jan 2026 ('+lbl+')',data:[+(isBU?buEB26:ocf26)/1e6,+(buC26/1e6),+(buFCF26/1e6)].map(function(v){return +v.toFixed(2);}), backgroundColor:'rgba(201,168,76,0.82)',borderRadius:4},
+      ]
+    },options:{responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{position:'bottom',labels:{font:{size:10},boxWidth:10}},
+        title:{display:true,text:'Cash Flow Summary \u2014 OCF / CAPEX / FCF ('+lbl+')',font:{size:12,weight:'600'},color:'#1F2D5A'}
+      },
+      scales:{
+        x:{...ax(),ticks:{...ax().ticks,font:{size:10}}},
+        y:{...ax(),title:{display:true,text:'$M',color:'#555'},ticks:{...ax().ticks,callback:function(v){return '$'+v.toFixed(0)+'M';}}}
+      }
+    }});
+  }
+
+  // ── Chart 3: CAPEX by Business Unit — FY 2025 vs Annualised Jan 2026 ──
+  var cBU=(fpd.capex_bu||[]).filter(function(b){return (b.fy2025||0)>0||(b.jan2026||0)>0;}).sort(function(a,b){return (b.fy2025||0)-(a.fy2025||0);});
+  if(document.getElementById('cf-conversion-chart')){
+    makeChart('cf-conversion-chart',{type:'bar',data:{
+      labels:cBU.map(function(b){return b.bu;}),
+      datasets:[
+        {label:'FY 2025 ($M)',          data:cBU.map(function(b){return +((b.fy2025||0)/1e6).toFixed(2);}), backgroundColor:'rgba(31,45,90,0.82)',  borderRadius:4},
+        {label:'Jan 2026 \xd712 ($M)',  data:cBU.map(function(b){return +((b.jan2026||0)*12/1e6).toFixed(2);}), backgroundColor:'rgba(201,168,76,0.72)',borderRadius:4},
+      ]
+    },options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',
+      plugins:{
+        legend:{position:'bottom',labels:{font:{size:10},boxWidth:10}},
+        title:{display:true,text:'CAPEX by Business Unit \u2014 FY 2025 vs Annualised Jan 2026',font:{size:12,weight:'600'},color:'#1F2D5A'}
+      },
+      scales:{
+        x:{...ax(),title:{display:true,text:'$M',color:'#555'},ticks:{...ax().ticks,callback:function(v){return '$'+v.toFixed(0)+'M';}}},
+        y:{...ax(),ticks:{...ax().ticks,font:{size:9}}}
+      }
+    }});
+  }
+
+  // ── Chart 4: Jan 2026 Cash Bridge ──
+  // Color-coded bars: navy=balance, green=inflow, red=outflow
+  if(document.getElementById('cf-waterfall-chart')){
+    var wfVals=[cashDec25,ocf26,-capex26,other26,cashJan26].map(function(v){return +(v/1e6).toFixed(2);});
+    var wfColors=['rgba(31,45,90,0.85)','rgba(26,107,60,0.82)','rgba(204,51,0,0.82)',
+      other26>=0?'rgba(78,123,212,0.82)':'rgba(204,51,0,0.75)','rgba(31,45,90,0.85)'];
+    makeChart('cf-waterfall-chart',{type:'bar',data:{
+      labels:['Opening Cash\n(Dec-25)','+Operating\nCash Flow','\u2212CAPEX\n(Outflow)','Net Other\nChanges','Closing Cash\n(Jan-26)'],
+      datasets:[{label:'$M',data:wfVals,backgroundColor:wfColors,borderRadius:5,barPercentage:0.65}]
+    },options:{responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        title:{display:true,text:'Jan 2026 Cash Movement Bridge \u2014 Group Consolidated',font:{size:12,weight:'600'},color:'#1F2D5A'}
+      },
+      scales:{
+        x:{...ax(),ticks:{...ax().ticks,font:{size:9}}},
+        y:{...ax(),title:{display:true,text:'$M',color:'#555'},ticks:{...ax().ticks,callback:function(v){return '$'+v.toFixed(1)+'M';}}}
+      }
+    }});
+  }
+
+  // ── Cash Flow Statement Table ──
+  var C=['FY 2025 ('+(isBU?buF:'Group')+')', 'Jan 2026 ('+(isBU?buF:'Group')+')'];
+  var fmtCell=function(v,row){
+    if(v===null||v===undefined) return '<td class="num" style="color:#bbb">\u2014</td>';
+    var iT=row.type==='total',iS=row.type==='subtotal',iB=row.type==='balance';
+    var bold=iT||iS||iB?'font-weight:700;':'';
+    var col=v<0?'color:#CC3300;':(iT&&v>0?'color:#1A6B3C;':'');
+    return '<td class="num" style="'+bold+col+'">'+fmtM(v)+'</td>';
+  };
+  var tblRows=[
+    {l:'OPERATING ACTIVITIES',       type:'header'},
+    {l:'Net Income / EBITDA',        vals:isBU?[buEB25,buEB26]:[ni25,ni26],         src:isBU?'EBITDA':'IS Consol.'},
+    {l:'Add: D\u0026A (Non-Cash)',   vals:isBU?[0,0]:[da25,da26],                   src:isBU?'N/A':'IS Consol.'},
+    {l:'Operating Cash Flow (OCF)',  vals:isBU?[buEB25,buEB26]:[ocf25,ocf26],       type:'subtotal',src:'NI + D\u0026A'},
+    {l:'INVESTING ACTIVITIES',       type:'header'},
+    {l:'Capital Expenditure (CAPEX)',vals:[-buC25,-buC26],                           src:'FP Data'},
+    {l:'Net Cash from Investing',    vals:[-buC25,-buC26],                           type:'subtotal'},
+    {l:'FINANCING \u0026 WORKING CAPITAL',type:'header'},
+    {l:'Net Borrowings / WC / Other',vals:isBU?[null,null]:[null,other26],          src:isBU?'Group only':'Derived'},
+    {l:'Net Cash from Fin. \u0026 Other',vals:isBU?[null,null]:[null,other26],     type:'subtotal'},
+    {l:'FREE CASH FLOW (OCF \u2212 CAPEX)',vals:[buFCF25,buFCF26],                 type:'total',src:'Key Metric'},
+    {l:'NET CASH CHANGE',            vals:isBU?[null,null]:[null,netChg26],         type:'subtotal'},
+    {l:'Cash \u2014 Opening (Dec-25)',vals:isBU?[null,null]:[null,cashDec25],       type:'balance',src:'Dec-25 Actual'},
+    {l:'Cash \u2014 Closing (Jan-26)',vals:isBU?[null,null]:[cashDec25,cashJan26],  type:'balance',src:'Jan-26 Actual'},
+  ];
+  var tbl='<table class="data-table" style="width:100%;font-size:12px"><thead><tr>'+
+    '<th style="text-align:left;min-width:260px">Line Item</th>'+
+    C.map(function(c){return '<th class="num" style="min-width:140px">'+c+'</th>';}).join('')+
+    '<th style="min-width:80px;text-align:center;font-size:10px">Source</th>'+
+    '</tr></thead><tbody>';
+  tblRows.forEach(function(row){
+    if(row.type==='header'){
+      tbl+='<tr style="background:#1F2D5A;color:#fff"><td colspan="4" style="padding:7px 10px;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase">'+row.l+'</td></tr>';
+      return;
+    }
+    var iT=row.type==='total',iS=row.type==='subtotal',iB=row.type==='balance';
+    var bg=iT?'background:#f0f4e8;':iB?'background:#fff8e1;':iS?'background:#f7f7f7;':'';
+    var bold=iT||iS||iB?'font-weight:700;':'';
+    tbl+='<tr style="'+bg+'"><td style="padding:6px 10px;'+bold+'">'+row.l+'</td>'+
+      (row.vals||[]).map(function(v){return fmtCell(v,row);}).join('')+
+      '<td style="text-align:center;padding:4px;font-size:10px;color:#888">'+(row.src||'')+'</td></tr>';
+  });
+  tbl+='</tbody></table>';
+  var wrap=document.getElementById('cf-table-wrap');
+  if(wrap) wrap.innerHTML=tbl;
+
+  // ── Update section header ──
+  var sh=document.querySelector('#page-cashflow .section-header p');
+  if(sh) sh.textContent='Group Consolidated | FY 2024 vs FY 2025 EBITDA Trend | Jan 2026 YTD | OCF / FCF / CAPEX Analysis | All figures USD';
+
+}catch(e){ console.error('[Section34] initCashFlow error:',e); }
+};
+})();
+// END Section 34
+
+// ═══════════════════════════════════════════════════════════════
+// SECTION 32 — Consolidated Group Financial Ratios
+// ═══════════════════════════════════════════════════════════════
+(function(){
+'use strict';
+window.initRatios = function(){
+  try{
+    // ── Income Statement Consolidation ──────────────────────
+    var REV24   = 154341403, REV25   = 195318802, REV26   = 24491684;
+    var COGS24  = 83247106,  COGS25  = 107026230, COGS26  = 8710567;
+    var GP24    = REV24-COGS24, GP25 = 88292572,  GP26    = 15781117;
+    var EBITDA24= 43503578,  EBITDA25= 56738041,  EBITDA26= 4602356;
+    var NI25    = 41860804,  NI26    = 2731469;
+
+    // ── Balance Sheet Consolidation (Jan 2026) ──────────────
+    var fpd = (typeof FP_DATA !== 'undefined') ? FP_DATA : {};
+    var bsr = (fpd.bs26 && fpd.bs26.rows) ? fpd.bs26.rows : {};
+    // Index 14 = 'Consolidated' column is empty in source data; index 12 = 'Combined For Cons.' has the actual figures
+    var CI  = 12; // index of 'Combined For Cons.' (actual consolidated BS data)
+    function bsv(k){ var a=bsr[k]; return (Array.isArray(a)&&a[CI]!=null)?a[CI]:0; }
+    var CASH26 = bsv('Cash And Cash Equiv');
+    var AR26   = bsv('Accounts Receivable');
+    var INV26  = bsv('Inventory');
+    var CA26   = bsv('Total current assets');
+    var TA26   = bsv('Total Assets');
+    var AP26   = bsv('Accounts Payable');
+    var CL26   = bsv('Total current liabilities');
+    var TL26   = bsv('Total Liabilities');
+    var DEBT26 = bsv('Bank debt');
+    var TE26   = TA26 - TL26;
+
+    // ── Cash Flow Consolidation ─────────────────────────────
+    var DA25    = 10622204, DA26    = 991548;
+    var CAPEX25 = 23566336, CAPEX26 = 2703354;
+    var OCF25   = NI25 + DA25;
+    var OCF26   = NI26 + DA26;
+    var FCF25   = OCF25 - CAPEX25;
+    var FCF26   = OCF26 - CAPEX26;
+
+    // ── Computed Ratios ─────────────────────────────────────
+    var GPM24  = GP24/REV24*100,      GPM25  = GP25/REV25*100,      GPM26  = GP26/REV26*100;
+    var EM24   = EBITDA24/REV24*100,  EM25   = EBITDA25/REV25*100,  EM26   = EBITDA26/REV26*100;
+    var NPM25  = NI25/REV25*100,      NPM26  = NI26/REV26*100;
+    var CR26   = CA26/CL26,           QR26   = (CASH26+AR26)/CL26;
+    var DSO26  = AR26/REV26*30,       DPO26  = AP26/COGS26*30;
+    var INVT26 = (COGS26*12)/INV26,   INVD26 = INV26/COGS26*30;
+    var DTE26  = DEBT26/TE26,         DtE26  = DEBT26/(EBITDA26*12);
+    var OCFNI25= OCF25/NI25,          OCFNI26= OCF26/NI26;
+
+    // ── Formatters ──────────────────────────────────────────
+    function fmtM(v){ var a=Math.abs(v); var s=a>=1e6?'$'+(a/1e6).toFixed(1)+'M':a>=1e3?'$'+(a/1e3).toFixed(0)+'K':'$'+a.toFixed(0); return v<0?'('+s+')':s; }
+    function pp(v,d){ return (+(v||0)).toFixed(d!==undefined?d:1)+'%'; }
+    function xx(v,d){ return (+(v||0)).toFixed(d!==undefined?d:2)+'x'; }
+    function dd(v){ return Math.round(v||0)+' days'; }
+    function scol(v,g,a,inv){
+      if(inv){ return v<=g?'green':v<=a?'amber':'red'; }
+      return v>=g?'green':v>=a?'amber':'red';
+    }
+    function badge(s){
+      var bg = s==='green'?'rgba(26,107,60,0.12)':s==='amber'?'rgba(201,168,76,0.18)':'rgba(204,51,0,0.10)';
+      var fg = s==='green'?'#1A6B3C':s==='amber'?'#7a5c1e':'#CC3300';
+      return 'style="background:'+bg+';color:'+fg+';font-weight:700"';
+    }
+
+    // ── KPI Cards ───────────────────────────────────────────
+    var kd = document.getElementById('ratios-kpis');
+    if(kd){
+      var kcards = [
+        {l:'GP Margin — Jan 2026',   v:pp(GPM26),    s:'FY25: '+pp(GPM25)+' · FY24: '+pp(GPM24),  c:scol(GPM26,40,25)},
+        {l:'EBITDA Margin — Jan 2026',v:pp(EM26),    s:'FY25: '+pp(EM25)+' · FY24: '+pp(EM24),    c:scol(EM26,20,12)},
+        {l:'Net Profit Margin — FY25',v:pp(NPM25),   s:'Jan 2026: '+pp(NPM26),                     c:scol(NPM25,10,5)},
+        {l:'Current Ratio — Jan 2026',v:xx(CR26),    s:'Benchmark > 2.0x',                          c:scol(CR26,2,1.2)},
+        {l:'Quick Ratio — Jan 2026',  v:xx(QR26),    s:'Benchmark > 1.0x',                          c:scol(QR26,1,0.6)},
+        {l:'DSO — Jan 2026',          v:dd(DSO26),   s:'Benchmark < 60 days',                       c:scol(DSO26,60,90,true)},
+        {l:'Debt / EBITDA (Ann.)',     v:xx(DtE26),  s:'Bank debt / Ann. EBITDA',                   c:scol(DtE26,0.01,3,true)},
+        {l:'Free Cash Flow — FY25',   v:fmtM(FCF25), s:'OCF − CAPEX · Jan 26: '+fmtM(FCF26),       c:FCF25>0?'green':'red'},
+      ];
+      kd.innerHTML = kcards.map(function(k){
+        return '<div class="kpi-card '+k.c+'"><div class="kpi-label">'+k.l+'</div>'+
+          '<div class="kpi-value">'+k.v+'</div><div class="kpi-sub">'+k.s+'</div></div>';
+      }).join('');
+    }
+
+    // ── Chart 1: Profitability Margins — FY2024 vs FY2025 vs Jan 2026 ──
+    if(document.getElementById('c-ratio-liquidity') && typeof makeChart==='function'){
+      makeChart('c-ratio-liquidity',{type:'bar',data:{
+        labels:['FY 2024','FY 2025','Jan 2026'],
+        datasets:[
+          {label:'GP Margin %',        data:[+GPM24.toFixed(1),+GPM25.toFixed(1),+GPM26.toFixed(1)], backgroundColor:'rgba(31,45,90,0.85)',   borderRadius:5},
+          {label:'EBITDA Margin %',    data:[+EM24.toFixed(1), +EM25.toFixed(1), +EM26.toFixed(1)],  backgroundColor:'rgba(201,168,76,0.85)', borderRadius:5},
+          {label:'Net Profit Margin %',data:[null,             +NPM25.toFixed(1),+NPM26.toFixed(1)], backgroundColor:'rgba(26,107,60,0.82)',  borderRadius:5},
+        ]},options:{responsive:true,maintainAspectRatio:false,
+          plugins:{legend:{position:'bottom',labels:{font:{size:10},boxWidth:10}},
+            title:{display:true,text:'Profitability Margins \u2014 FY 2024 vs FY 2025 vs Jan 2026',font:{size:11,weight:'600'},color:'#1F2D5A'}},
+          scales:{
+            x:{ticks:{color:'#555',font:{size:10}},grid:{color:'rgba(0,0,0,0.04)'}},
+            y:{ticks:{color:'#555',font:{size:10},callback:function(v){return v+'%'}},grid:{color:'rgba(0,0,0,0.05)'}}
+          }}
+      });
+    }
+
+    // ── Chart 2: Liquidity Ratios — Actual vs Benchmark ──
+    if(document.getElementById('c-ratio-margin-trend') && typeof makeChart==='function'){
+      // Horizontal bar: clearer for small number of ratios with benchmarks
+      makeChart('c-ratio-margin-trend',{type:'bar',data:{
+        labels:['Current Ratio (Jan 2026)','Quick Ratio (Jan 2026)'],
+        datasets:[
+          {label:'Actual Value',    data:[+CR26.toFixed(2),+QR26.toFixed(2)],  backgroundColor:['rgba(31,45,90,0.85)','rgba(31,45,90,0.85)'],   borderRadius:5},
+          {label:'Benchmark Target',data:[2.0,1.0],                             backgroundColor:'rgba(201,168,76,0.40)',                          borderRadius:3},
+        ]},options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',
+          plugins:{legend:{position:'bottom',labels:{font:{size:10},boxWidth:10}},
+            title:{display:true,text:'Liquidity Ratios vs Benchmark \u2014 Jan 2026',font:{size:11,weight:'600'},color:'#1F2D5A'}},
+          scales:{
+            x:{ticks:{color:'#555',font:{size:10},callback:function(v){return v+'x'}},grid:{color:'rgba(0,0,0,0.05)'}},
+            y:{ticks:{color:'#555',font:{size:10}}}
+          }}
+      });
+    }
+
+    // ── Chart 3: Working Capital Days — Actual vs Benchmark ──
+    if(document.getElementById('c-ratio-wc') && typeof makeChart==='function'){
+      makeChart('c-ratio-wc',{type:'bar',data:{
+        labels:['DSO (Jan 2026)','DPO (Jan 2026)','Inventory Days (Jan 2026)'],
+        datasets:[
+          {label:'Actual (days)',   data:[Math.round(DSO26),Math.round(DPO26),Math.round(INVD26)],  backgroundColor:['rgba(31,45,90,0.85)','rgba(201,168,76,0.85)','rgba(78,123,212,0.85)'], borderRadius:5},
+          {label:'Benchmark',       data:[60,45,90],                                                  backgroundColor:'rgba(204,51,0,0.30)',  borderRadius:3},
+        ]},options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',
+          plugins:{legend:{position:'bottom',labels:{font:{size:10},boxWidth:10}},
+            title:{display:true,text:'Working Capital Cycle \u2014 Days (Jan 2026 vs Benchmark)',font:{size:11,weight:'600'},color:'#1F2D5A'}},
+          scales:{
+            x:{ticks:{color:'#555',font:{size:10},callback:function(v){return v+' d'}},grid:{color:'rgba(0,0,0,0.05)'}},
+            y:{ticks:{color:'#555',font:{size:9}}}
+          }}
+      });
+    }
+
+    // ── Chart 4: Cash Flow — OCF / CAPEX / FCF Comparison ──
+    if(document.getElementById('c-ratio-capex') && typeof makeChart==='function'){
+      makeChart('c-ratio-capex',{type:'bar',data:{
+        labels:['Operating CF (OCF)','Capital Expenditure (CAPEX)','Free Cash Flow (FCF)'],
+        datasets:[
+          {label:'FY 2025 ($M)',   data:[+(OCF25/1e6).toFixed(2),+(CAPEX25/1e6).toFixed(2),+(FCF25/1e6).toFixed(2)], backgroundColor:'rgba(31,45,90,0.85)',  borderRadius:5},
+          {label:'Jan 2026 ($M)',  data:[+(OCF26/1e6).toFixed(2),+(CAPEX26/1e6).toFixed(2),+(FCF26/1e6).toFixed(2)], backgroundColor:'rgba(201,168,76,0.85)',borderRadius:5},
+        ]},options:{responsive:true,maintainAspectRatio:false,
+          plugins:{legend:{position:'bottom',labels:{font:{size:10},boxWidth:10}},
+            title:{display:true,text:'Cash Flow Summary \u2014 OCF / CAPEX / FCF ($M)',font:{size:11,weight:'600'},color:'#1F2D5A'}},
+          scales:{
+            x:{ticks:{color:'#555',font:{size:9}},grid:{color:'rgba(0,0,0,0.04)'}},
+            y:{ticks:{color:'#555',font:{size:10},callback:function(v){return '$'+v.toFixed(0)+'M'}},grid:{color:'rgba(0,0,0,0.05)'}}
+          }}
+      });
+    }
+
+    // ── Comprehensive Ratios Table ───────────────────────────
+    var ratios = [
+      // [category, name, FY24, FY25, Jan26, benchmark, scoreVal, scoreThresh, scoreAmber, invert, assessment]
+      ['Profitability','Gross Profit Margin',   pp(GPM24), pp(GPM25), pp(GPM26),  '≥ 40%',  GPM26,  40, 25, false, GPM26>=40?'✓ Above benchmark':'⚠ Monitor'],
+      ['Profitability','EBITDA Margin',          pp(EM24),  pp(EM25),  pp(EM26),   '≥ 20%',  EM26,   20, 12, false, EM26>=20?'✓ Above benchmark':EM26>0?'⚠ Improving — below target':'⚠ Negative'],
+      ['Profitability','Net Profit Margin',      '—',       pp(NPM25), pp(NPM26),  '≥ 10%',  NPM26,  10,  5, false, NPM26>=10?'✓ Healthy':'⚠ Improving — watch costs'],
+      ['Liquidity',    'Current Ratio',          '—',       '—',       xx(CR26),   '> 2.0x', CR26,    2, 1.2,false, CR26>=2?'✓ Adequate liquidity':'⚠ Below benchmark'],
+      ['Liquidity',    'Quick Ratio',             '—',       '—',       xx(QR26),   '> 1.0x', QR26,    1, 0.6,false, QR26>=1?'✓ Adequate':'⚠ Inventory-weighted CA'],
+      ['Efficiency',   'AR Turnover',             '—',       '—',       xx(AR26>0?REV26*12/AR26:0,2),'> 4x',AR26>0?REV26*12/AR26:0,4,2,false,'Jan 2026 (annualised rev/AR)'],
+      ['Efficiency',   'DSO — Days Sales Outst.', '—',       '—',       dd(DSO26),  '< 60 d', DSO26,  60, 90, true, DSO26<60?'✓ Efficient':'⚠ Collections improvement opportunity'],
+      ['Efficiency',   'AP Turnover',             '—',       '—',       xx((COGS26*12)/AP26,2),'4–8x', (COGS26*12)/AP26, 4, 2, false, 'Jan 2026 (annualised)'],
+      ['Efficiency',   'DPO — Days Payable Outst.','—',      '—',       dd(DPO26),  '30–60 d',DPO26,  60, 90, true, DPO26<=60?'✓ Timely payments':'⚠ Extended payables'],
+      ['Efficiency',   'Inventory Turnover',       '—',       '—',       xx(INVT26,2),'> 4x', INVT26,  4,  2, false, INVT26>=4?'✓ Healthy':'⚠ Inventory efficiency'],
+      ['Efficiency',   'Inventory Days',           '—',       '—',       dd(INVD26), '< 90 d', INVD26, 90,120, true, INVD26<=90?'✓ Efficient':'⚠ Slow-moving stock risk'],
+      ['Leverage',     'Debt to Equity',           '—',       '—',       xx(DTE26,2),'< 1.5x', DTE26, 1.5, 2, true, DTE26<1.5?'✓ Conservative leverage':'⚠ High leverage'],
+      ['Leverage',     'Debt to EBITDA (Ann.)',     '—',       '—',       xx(DtE26,2),'< 3.0x', DtE26,   3, 5, true, DtE26<3?'✓ Manageable debt':'⚠ Monitor debt service'],
+      ['Cash Flow',    'OCF / Net Income',          '—',       xx(OCFNI25,2), xx(OCFNI26,2),'> 1.0x',OCFNI26, 1, 0.7, false, OCFNI26>=1?'✓ Strong cash conversion':'⚠ Watch cash quality'],
+      ['Cash Flow',    'Free Cash Flow',            '—',       fmtM(FCF25), fmtM(FCF26), 'Positive', FCF26, 0, -1e9, false, FCF26>0?'✓ Positive FCF':'⚠ CAPEX > OCF this period'],
+    ];
+
+    var th = '<table style="width:100%;border-collapse:collapse;font-size:12px">'+
+      '<thead><tr style="background:#1F2D5A;color:#fff">'+
+      '<th style="padding:9px 14px;text-align:left;width:110px">Category</th>'+
+      '<th style="padding:9px 14px;text-align:left">Ratio</th>'+
+      '<th style="padding:9px 12px;text-align:center;width:90px">FY 2024</th>'+
+      '<th style="padding:9px 12px;text-align:center;width:90px">FY 2025</th>'+
+      '<th style="padding:9px 12px;text-align:center;width:100px">Jan 2026 (YTD)</th>'+
+      '<th style="padding:9px 12px;text-align:center;width:90px">Benchmark</th>'+
+      '<th style="padding:9px 14px;text-align:left">Assessment</th>'+
+      '</tr></thead><tbody>';
+
+    var prevCat = '';
+    ratios.forEach(function(r, idx){
+      var s = scol(r[6], r[7], r[8], r[9]);
+      var rowBg = idx%2===0?'#fff':'rgba(31,45,90,0.025)';
+      var catCell = r[0]!==prevCat ?
+        '<td style="padding:8px 14px;font-weight:700;color:#fff;background:rgba(31,45,90,0.75);font-size:11px;border-radius:2px" rowspan="">'+r[0]+'</td>' :
+        '<td style="padding:8px 14px;color:#bbb;font-size:10px;border-right:1px solid rgba(0,0,0,0.04)"></td>';
+      prevCat = r[0];
+      th += '<tr style="background:'+rowBg+';border-bottom:1px solid rgba(0,0,0,0.055)">'+
+        catCell+
+        '<td style="padding:8px 14px;color:#333">'+r[1]+'</td>'+
+        '<td style="padding:8px 12px;text-align:center;color:#888">'+r[2]+'</td>'+
+        '<td style="padding:8px 12px;text-align:center;color:#555">'+r[3]+'</td>'+
+        '<td style="padding:8px 12px;text-align:center" '+badge(s)+'>'+r[4]+'</td>'+
+        '<td style="padding:8px 12px;text-align:center;color:#888;font-size:11px">'+r[5]+'</td>'+
+        '<td style="padding:8px 14px;font-size:11px;color:#555">'+r[10]+'</td>'+
+        '</tr>';
+    });
+    th += '</tbody></table>';
+
+    var tw = document.getElementById('ratios-table-wrap');
+    if(tw) tw.innerHTML = th;
+
+    // ── Hide entity-level tables (superseded by group consolidated) ──
+    ['ratios-liq-table','ratios-eff-table'].forEach(function(id){
+      var el = document.getElementById(id);
+      if(el){ var cb = el.closest ? el.closest('.chart-box') : el.parentElement;
+        if(cb) cb.style.display = 'none'; }
+    });
+
+    // ── Insight Cards ────────────────────────────────────────
+    var ins = document.getElementById('ratios-insights');
+    if(ins){
+      ins.innerHTML = [
+        {i:'📈',t:'GP Margin Expanding',b:'Jan 2026 GP margin of '+pp(GPM26)+' is well ahead of FY25 ('+pp(GPM25)+'), reflecting strong revenue mix and pricing discipline.',c:'#1A6B3C'},
+        {i:'💰',t:'Strong FCF Generation',b:'FY 2025 FCF of '+fmtM(FCF25)+' confirms robust operating cash generation. Jan 2026 FCF: '+fmtM(FCF26)+'.',c:'#1F2D5A'},
+        {i:'🏦',t:'Conservative Leverage',b:'Debt/EBITDA of '+xx(DtE26)+' (benchmark 3.0x) and Debt/Equity of '+xx(DTE26,2)+' signal low financial risk and debt headroom.',c:'#1F2D5A'},
+        {i:'✅',t:'Liquidity Above Benchmark',b:'Current ratio of '+xx(CR26)+' exceeds the 2.0x benchmark. Quick ratio of '+xx(QR26)+' indicates adequate near-term coverage.',c:'#1A6B3C'},
+        {i:'⚠️',t:'DSO Requires Attention',b:'DSO at '+dd(DSO26)+' vs 60-day benchmark. Accelerating AR collections could release ~'+fmtM(Math.max(0,AR26-REV26*2))+' in working capital.',c:'#C9A84C'},
+        {i:'📉',t:'EBITDA Margin: Seasonality Watch',b:'Jan 2026 EBITDA margin ('+pp(EM26)+') reflects Jan seasonality. Annualised run-rate EBITDA: '+fmtM(EBITDA26*12)+' vs FY25 actual '+fmtM(EBITDA25)+'.',c:'#C9A84C'},
+      ].map(function(d){
+        return '<div style="background:#fff;border:1px solid rgba(0,0,0,0.08);border-radius:10px;padding:16px;border-left:4px solid '+d.c+'">'+
+          '<div style="font-size:20px;margin-bottom:6px">'+d.i+'</div>'+
+          '<div style="font-weight:700;color:#1F2D5A;font-size:12px;margin-bottom:5px">'+d.t+'</div>'+
+          '<div style="font-size:11px;color:#555;line-height:1.55">'+d.b+'</div>'+
+          '</div>';
+      }).join('');
+    }
+
+    // ── Update section header ────────────────────────────────
+    var sh = document.querySelector('#page-ratios .section-header p');
+    if(sh) sh.textContent = 'Group Consolidated | Derived from IS Consolidation, Balance Sheet Consolidation & Cash Flow Consolidation | FY 2024\u2013Jan 2026 | All figures USD';
+
+    // ── Update page title ────────────────────────────────────
+    if(typeof pageTitles==='object') pageTitles['ratios']='Financial Ratios \u2014 Group Consolidated';
+
+  } catch(e){ console.error('[Section32] initRatios error:', e); }
+};
+})();
+// END Section 32
 </script>
 </body>
 </html>
