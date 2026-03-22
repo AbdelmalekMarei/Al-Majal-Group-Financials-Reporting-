@@ -10121,6 +10121,2165 @@ function initCashFlow() {
   console.log('[Section 26] AR/AP tabs + sort + Full Data Table hidden.');
 })();
 // END Section 26
+
+// ══════════════════════════════════════════════════════════════════════
+// SECTION 27 — EXECUTIVE SUMMARY (CEO Dashboard)
+// ══════════════════════════════════════════════════════════════════════
+(function(){
+
+  // ── 1. Rename nav label & page title ─────────────────────────────
+  document.querySelectorAll('.nav-item').forEach(function(el){
+    if(el.getAttribute('onclick') && el.getAttribute('onclick').indexOf("'overview'") >= 0){
+      el.childNodes.forEach(function(n){
+        if(n.nodeType === 3 && n.textContent.trim()) n.textContent = 'Executive Summary';
+      });
+    }
+  });
+  if(typeof pageTitles === 'object') pageTitles['overview'] = 'Executive Summary — Al Majal Group';
+
+  // ── 2. Rebuild page-overview HTML ────────────────────────────────
+  var cont = document.getElementById('page-overview');
+  if(!cont){ console.warn('[S27] page-overview not found'); return; }
+
+  var NAVY='#1F2D5A', GOLD='#C9A84C', GREEN='#1A6B3C', RED='#CC3300';
+
+  cont.innerHTML = [
+    // ── Masthead ──
+    '<div style="background:linear-gradient(135deg,#1F2D5A 0%,#2C3E6B 100%);border-radius:10px;padding:18px 24px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between">',
+      '<div>',
+        '<div style="color:#C9A84C;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Al Majal Group</div>',
+        '<div style="color:#fff;font-size:22px;font-weight:800;letter-spacing:0.5px">Executive Summary</div>',
+        '<div style="color:rgba(255,255,255,0.55);font-size:12px;margin-top:3px">Consolidated Group Performance &nbsp;|&nbsp; FY 2016 – January 2026 &nbsp;|&nbsp; All figures USD</div>',
+      '</div>',
+      '<div style="text-align:right">',
+        '<div style="color:#C9A84C;font-size:13px;font-weight:700">📅 January 2026</div>',
+        '<div style="color:rgba(255,255,255,0.5);font-size:10px;margin-top:3px">2026 YTD: Month 1 of 12</div>',
+        '<div style="margin-top:8px;background:rgba(201,168,76,0.2);border:1px solid rgba(201,168,76,0.4);border-radius:20px;padding:3px 12px;color:#C9A84C;font-size:10px;font-weight:600">CONFIDENTIAL</div>',
+      '</div>',
+    '</div>',
+
+    // ── SECTION A: 2026 YTD Flash Scorecard ──
+    '<div style="font-size:11.5px;font-weight:700;color:'+GOLD+';padding:7px 12px;background:rgba(201,168,76,0.10);border-left:4px solid '+GOLD+';border-radius:4px;margin-bottom:10px;display:flex;align-items:center;gap:8px">',
+      '📅 &nbsp;2026 YTD Flash Scorecard — January 2026',
+      '<span style="margin-left:auto;font-weight:500;color:#888;font-size:10px">Figures in USD &nbsp;|&nbsp; Prior-year FY 2025 comparison</span>',
+    '</div>',
+    '<div class="kpi-grid" id="es-ytd-kpis"></div>',
+
+    // ── SECTION B: Historical Trend + YoY Growth ──
+    '<div style="font-size:11.5px;font-weight:700;color:'+NAVY+';padding:7px 12px;background:rgba(31,45,90,0.07);border-left:4px solid '+NAVY+';border-radius:4px;margin:18px 0 10px">',
+      '📈 &nbsp;Historical Performance Trend &nbsp;|&nbsp; FY 2016 – Jan 2026',
+    '</div>',
+    '<div class="chart-row cols-2">',
+      '<div class="chart-box"><div class="chart-title"><span></span>Revenue & EBITDA — 10-Year History + Jan 2026</div><div class="chart-container h280"><canvas id="es-rev-trend"></canvas></div></div>',
+      '<div class="chart-box"><div class="chart-title"><span></span>Year-on-Year Revenue Growth %</div><div class="chart-container h280"><canvas id="es-yoy-growth"></canvas></div></div>',
+    '</div>',
+
+    // ── SECTION C: BU Performance Jan 2026 ──
+    '<div style="font-size:11.5px;font-weight:700;color:'+NAVY+';padding:7px 12px;background:rgba(31,45,90,0.07);border-left:4px solid '+NAVY+';border-radius:4px;margin:18px 0 10px">',
+      '🏢 &nbsp;Business Unit Performance — January 2026 Flash &nbsp;|&nbsp; All Active BUs',
+    '</div>',
+    '<div class="chart-row cols-2">',
+      '<div class="chart-box"><div class="chart-title"><span></span>Revenue & EBITDA by Business Unit — Jan 2026</div><div class="chart-container h300"><canvas id="es-bu-bar26"></canvas></div></div>',
+      '<div class="chart-box"><div class="chart-title"><span></span>Revenue Contribution by BU — Jan 2026</div><div class="chart-container h300"><canvas id="es-bu-donut26"></canvas></div></div>',
+    '</div>',
+
+    // ── SECTION D: Profitability & Margins ──
+    '<div style="font-size:11.5px;font-weight:700;color:'+NAVY+';padding:7px 12px;background:rgba(31,45,90,0.07);border-left:4px solid '+NAVY+';border-radius:4px;margin:18px 0 10px">',
+      '📊 &nbsp;Profitability & Margin Analysis — Historical + Jan 2026',
+    '</div>',
+    '<div class="chart-row cols-2">',
+      '<div class="chart-box"><div class="chart-title"><span></span>EBITDA Margin % by Business Unit — FY 2025 vs Jan 2026</div><div class="chart-container h280"><canvas id="es-ebitda-bu-margin"></canvas></div></div>',
+      '<div class="chart-box"><div class="chart-title"><span></span>GP% & EBITDA% Margin Trend — FY 2016 to Jan 2026</div><div class="chart-container h280"><canvas id="es-margin-trend-new"></canvas></div></div>',
+    '</div>',
+
+    // ── SECTION E: Working Capital & Financing ──
+    '<div style="font-size:11.5px;font-weight:700;color:'+NAVY+';padding:7px 12px;background:rgba(31,45,90,0.07);border-left:4px solid '+NAVY+';border-radius:4px;margin:18px 0 10px">',
+      '💰 &nbsp;Working Capital & Credit Facilities — January 2026',
+    '</div>',
+    '<div class="kpi-grid" id="es-wc-kpis"></div>',
+    '<div class="chart-row cols-2" style="margin-top:12px">',
+      '<div class="chart-box"><div class="chart-title"><span></span>Credit Facilities — Utilized vs Available by Bank</div><div class="chart-container h220"><canvas id="es-fac-chart"></canvas></div></div>',
+      '<div class="chart-box"><div class="chart-title"><span></span>CAPEX by Business Unit — FY 2025 vs Jan 2026</div><div class="chart-container h220"><canvas id="es-capex-chart"></canvas></div></div>',
+    '</div>',
+
+    // ── SECTION F: Executive Signals ──
+    '<div style="font-size:11.5px;font-weight:700;color:'+NAVY+';padding:7px 12px;background:rgba(31,45,90,0.07);border-left:4px solid '+NAVY+';border-radius:4px;margin:18px 0 10px">',
+      '⚡ &nbsp;Executive Signals & Insights — Automated Analysis',
+    '</div>',
+    '<div id="es-alerts" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-bottom:32px"></div>',
+  ].join('');
+
+  // ── 3. Override initOverview ───────────────────────────────────────
+  window.initOverview = function(){ window._initExecSummary(); };
+  window.initOverviewExtension = function(){};   // handled inside
+
+  window._initExecSummary = function(){
+    var fpd = FP_DATA;
+    var ad  = AGEING_DATA;
+    var fd  = FAC_DATA;
+    var ax  = function(){ return { ticks:{color:'#555',font:{size:10}}, grid:{color:'rgba(0,0,0,0.05)'} }; };
+
+    // ── Derived metrics ──────────────────────────────────────────────
+    var rev25  = fpd.group_kpis.rev_2025    || 0;
+    var rev24  = fpd.group_kpis.rev_2024    || 0;
+    var ebd25  = fpd.group_kpis.ebitda_2025 || 0;
+    var ebd24  = fpd.group_kpis.ebitda_2024 || 0;
+    var gp25   = fpd.group_kpis.gp_2025     || 0;
+    var rev26  = fpd.group_kpis.rev_jan26   || 0;
+    var ebd26  = fpd.group_kpis.ebitda_jan26|| 0;
+    var gp26   = fpd.group_kpis.gp_jan26    || 0;
+    var cap25  = fpd.group_kpis.capex_2025  || 0;
+    var cap26  = fpd.group_kpis.capex_jan26 || 0;
+
+    var gpM26   = rev26>0 ? (gp26/rev26*100).toFixed(1)  : '0.0';
+    var ebM26   = rev26>0 ? (ebd26/rev26*100).toFixed(1) : '0.0';
+    var gpM25   = rev25>0 ? (gp25/rev25*100).toFixed(1)  : '0.0';
+    var ebM25   = rev25>0 ? (ebd25/rev25*100).toFixed(1) : '0.0';
+    var revYoY  = rev24>0 ? ((rev25-rev24)/rev24*100).toFixed(1) : '0.0';
+    var ebdYoY  = ebd24>0 ? ((ebd25-ebd24)/ebd24*100).toFixed(1) : '0.0';
+    var runRate = rev26 * 12;
+
+    // AR / AP totals
+    var arCusts = (ad.ar && ad.ar.customers) ? ad.ar.customers : [];
+    var apVends = (ad.ap && ad.ap.vendors)   ? ad.ap.vendors   : [];
+    var arTotal = arCusts.reduce(function(s,c){ return s+(+c.total||0); }, 0);
+    var apTotal = apVends.reduce(function(s,v){ return s+(+v.total||0); }, 0);
+    var netWC   = arTotal - apTotal;
+
+    // Overdue AR (90+ days)
+    var arOverdue = arCusts.reduce(function(s,c){ return s+(+c.days_90||0)+(+c.days_120||0)+(+c.over_120||0); }, 0);
+    var arOverduePct = arTotal>0 ? (arOverdue/arTotal*100).toFixed(1) : '0.0';
+
+    // Facilities
+    var bt = fd.bank_totals || {};
+    var utilPct = bt.limit>0 ? (bt.used/bt.limit*100).toFixed(0) : '0';
+
+    // Active BUs (Jan 2026, exclude non-BU rows)
+    var spots = (fpd.bu_spotlight||[]).filter(function(b){
+      return b.bu !== 'TOTAL CoGS' && b.bu !== 'Sub-Total' && b.bu !== 'TOTAL' && b.rev_jan26 > 0;
+    });
+
+    // Revenue CAGR (2021→2025, index 5 to 9 in year_labels starting 2016)
+    var revAnn = fpd.rev_annual || [];
+    var cagr = 0;
+    if(revAnn.length >= 10 && revAnn[4] > 0){
+      cagr = (Math.pow(revAnn[9]/revAnn[4], 1/5)-1)*100;
+    }
+
+    // ── A: YTD Flash Scorecard ───────────────────────────────────────
+    var ytdDiv = document.getElementById('es-ytd-kpis');
+    if(ytdDiv){
+      var mk = function(l,v,s,c){
+        return '<div class="kpi-card '+c+'"><div class="kpi-label">'+l+'</div><div class="kpi-value">'+v+'</div><div class="kpi-sub">'+s+'</div></div>';
+      };
+      var fM = function(n){ return fmtM(n); };
+      ytdDiv.innerHTML =
+        '<div style="grid-column:1/-1;background:linear-gradient(90deg,rgba(201,168,76,0.12),rgba(201,168,76,0.04));'+
+          'border:1px solid rgba(201,168,76,0.35);border-radius:8px;padding:10px 18px;'+
+          'display:flex;align-items:center;justify-content:space-between;margin-bottom:2px">'+
+          '<div><span style="font-weight:700;color:#C9A84C;font-size:13px">📅 January 2026 — Monthly Flash</span>'+
+          ' &nbsp;|&nbsp; <span style="color:#888;font-size:11px">2026 YTD (1 month elapsed)</span></div>'+
+          '<div style="font-size:11px;color:#666">Run-Rate: <strong style="color:#1F2D5A;font-size:13px">$'+fM(runRate)+'M</strong> annualized &nbsp;|&nbsp; '+
+          'FY 2025 actual: <strong style="color:#1F2D5A">$'+fM(rev25)+'M</strong></div>'+
+        '</div>'+
+        mk('Jan 2026 Revenue',      '$'+fM(rev26)+'M',
+           '▲ '+revYoY+'% YoY full-yr | run-rate $'+fM(runRate)+'M', 'accent')+
+        mk('Gross Profit (Jan 26)', '$'+fM(gp26)+'M',
+           'GP Margin: '+gpM26+'% &nbsp;|&nbsp; FY25: '+gpM25+'%', 'green')+
+        mk('EBITDA (Jan 26)',        '$'+fM(ebd26)+'M',
+           'EBITDA Margin: '+ebM26+'% &nbsp;|&nbsp; FY25: '+ebM25+'%', 'green')+
+        mk('AR Outstanding',        '$'+fM(arTotal)+'M',
+           arOverduePct+'% overdue (90d+) &nbsp;|&nbsp; '+arCusts.length+' customers', 'red')+
+        mk('AP Outstanding',        '$'+fM(apTotal)+'M',
+           'Net W/C: $'+fM(netWC)+'M &nbsp;|&nbsp; '+apVends.length+' vendors', '')+
+        mk('Credit Headroom',       '$'+fM(bt.available||0)+'M',
+           utilPct+'% utilized of $'+fM(bt.limit||0)+'M limit', '');
+    }
+
+    // ── B: Historical Revenue + EBITDA trend ─────────────────────────
+    var yrLbls = fpd.year_labels || [];
+    var revAnnual  = fpd.rev_annual    || [];
+    var ebdAnnual  = fpd.ebitda_annual || [];
+    makeChart('es-rev-trend', {type:'bar', data:{
+      labels: yrLbls,
+      datasets:[
+        {label:'Revenue $M', data:revAnnual.map(function(v){ return +(v/1e6).toFixed(2); }),
+          backgroundColor: yrLbls.map(function(_,i){ return i===yrLbls.length-1?'rgba(201,168,76,0.9)':'rgba(31,45,90,0.80)'; }),
+          borderRadius:3, order:2},
+        {label:'EBITDA $M', data:ebdAnnual.map(function(v){ return +(v/1e6).toFixed(2); }),
+          type:'line', borderColor:GREEN, backgroundColor:'rgba(26,107,60,0.08)',
+          pointBackgroundColor:GREEN, pointRadius:3, borderWidth:2.5, fill:false, tension:0.3, order:1},
+      ]
+    }, options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom',labels:{font:{size:10}}}},
+      scales:{x:ax(), y:{...ax(),ticks:{...ax().ticks,callback:function(v){ return '$'+v.toFixed(0)+'M'; }}}}}});
+
+    // ── B: YoY Growth % ───────────────────────────────────────────────
+    var yoy = revAnnual.map(function(v,i){ return i===0?0:+((v-revAnnual[i-1])/revAnnual[i-1]*100).toFixed(1); });
+    makeChart('es-yoy-growth', {type:'bar', data:{
+      labels: yrLbls,
+      datasets:[{label:'YoY Revenue Growth %', data:yoy,
+        backgroundColor:yoy.map(function(v){ return v>=0?'rgba(26,107,60,0.75)':'rgba(204,0,0,0.75)'; }),
+        borderRadius:4}]
+    }, options:{responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{label:function(ctx){ return ctx.parsed.y.toFixed(1)+'%'; }}}
+      },
+      scales:{x:ax(), y:{...ax(),ticks:{...ax().ticks,callback:function(v){ return v+'%'; }}}}}});
+
+    // ── C: BU Revenue & EBITDA bar — Jan 2026 ─────────────────────────
+    var bSorted = spots.slice().sort(function(a,b){ return b.rev_jan26-a.rev_jan26; });
+    var colors8 = ['#1F2D5A','#C9A84C','#CC3300','#1A6B3C','#4e7bd4','#e07b39','#6c757d','#a855f7','#0ea5e9','#d97706'];
+    makeChart('es-bu-bar26', {type:'bar', data:{
+      labels: bSorted.map(function(b){ return b.bu; }),
+      datasets:[
+        {label:'Revenue Jan 26',data:bSorted.map(function(b){ return +(b.rev_jan26/1e6).toFixed(3); }),
+          backgroundColor:'rgba(31,45,90,0.82)', borderRadius:4},
+        {label:'EBITDA Jan 26', data:bSorted.map(function(b){ return +(b.ebitda_jan26/1e6).toFixed(3); }),
+          backgroundColor:bSorted.map(function(b){ return b.ebitda_jan26>=0?'rgba(201,168,76,0.85)':'rgba(204,0,0,0.75)'; }),
+          borderRadius:4},
+      ]
+    }, options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom',labels:{font:{size:10}}}},
+      scales:{
+        x:{...ax(),ticks:{...ax().ticks,maxRotation:35,font:{size:9}}},
+        y:{...ax(),ticks:{...ax().ticks,callback:function(v){ return '$'+v.toFixed(2)+'M'; }}}
+      }}});
+
+    // ── C: BU Revenue Donut — Jan 2026 ────────────────────────────────
+    var bPos = bSorted.filter(function(b){ return b.rev_jan26>0; });
+    makeChart('es-bu-donut26', {type:'doughnut', data:{
+      labels: bPos.map(function(b){ return b.bu; }),
+      datasets:[{
+        data: bPos.map(function(b){ return +(b.rev_jan26/1e6).toFixed(3); }),
+        backgroundColor: bPos.map(function(_,i){ return colors8[i%colors8.length]; }),
+        borderWidth:2, borderColor:'#fff'
+      }]
+    }, options:{responsive:true,maintainAspectRatio:false,cutout:'52%',
+      plugins:{
+        legend:{position:'right',labels:{font:{size:9},boxWidth:10}},
+        tooltip:{callbacks:{label:function(ctx){ return ctx.label+': $'+ctx.parsed.toFixed(2)+'M'; }}}
+      }}});
+
+    // ── D: EBITDA Margin % by BU — FY2025 vs Jan 2026 ─────────────────
+    var bMargin = (fpd.bu_spotlight||[]).filter(function(b){
+      return b.bu!=='TOTAL CoGS'&&b.bu!=='Sub-Total'&&b.bu!=='TOTAL'&&
+             (b.ebitda_pct_2025!==0||b.ebitda_pct_jan26!==0);
+    }).sort(function(a,b){ return b.ebitda_pct_2025-a.ebitda_pct_2025; });
+    makeChart('es-ebitda-bu-margin', {type:'bar', data:{
+      labels: bMargin.map(function(b){ return b.bu; }),
+      datasets:[
+        {label:'FY 2025 EBITDA%', data:bMargin.map(function(b){ return +b.ebitda_pct_2025; }),
+          backgroundColor:'rgba(31,45,90,0.75)', borderRadius:4},
+        {label:'Jan 2026 EBITDA%',data:bMargin.map(function(b){ return +b.ebitda_pct_jan26; }),
+          backgroundColor:bMargin.map(function(b){ return b.ebitda_pct_jan26>=0?'rgba(201,168,76,0.85)':'rgba(204,0,0,0.7)'; }),
+          borderRadius:4},
+      ]
+    }, options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom',labels:{font:{size:10}}}},
+      scales:{
+        x:{...ax(),ticks:{...ax().ticks,maxRotation:35,font:{size:9}}},
+        y:{...ax(),ticks:{...ax().ticks,callback:function(v){ return v.toFixed(0)+'%'; }}}
+      }}});
+
+    // ── D: GP% & EBITDA% Margin Trend ─────────────────────────────────
+    var cogsAnn = fpd.cogs_annual || [];
+    var gpPct   = revAnnual.map(function(r,i){ return r>0?(r-cogsAnn[i])/r*100:0; });
+    var ebPct   = revAnnual.map(function(r,i){ return r>0?ebdAnnual[i]/r*100:0; });
+    makeChart('es-margin-trend-new', {type:'line', data:{
+      labels: yrLbls,
+      datasets:[
+        {label:'GP %',    data:gpPct.map(function(v){ return +v.toFixed(1); }),
+          borderColor:GOLD, backgroundColor:'rgba(201,168,76,0.10)',
+          borderWidth:2.5, tension:0.3, pointRadius:3, fill:false},
+        {label:'EBITDA %',data:ebPct.map(function(v){ return +v.toFixed(1); }),
+          borderColor:GREEN, backgroundColor:'rgba(26,107,60,0.08)',
+          borderWidth:2.5, tension:0.3, pointRadius:3, fill:false},
+      ]
+    }, options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom',labels:{font:{size:10}}}},
+      scales:{x:ax(), y:{...ax(),ticks:{...ax().ticks,callback:function(v){ return v.toFixed(0)+'%'; }}}}}});
+
+    // ── E: Working Capital KPIs ────────────────────────────────────────
+    var wcDiv = document.getElementById('es-wc-kpis');
+    if(wcDiv){
+      var mk2 = function(l,v,s,c){
+        return '<div class="kpi-card '+c+'"><div class="kpi-label">'+l+'</div><div class="kpi-value">'+v+'</div><div class="kpi-sub">'+s+'</div></div>';
+      };
+      var loans = (fd.loans||[]).filter(function(l){ return l.name!=='Sub-Total'; });
+      var loanBal = loans.reduce(function(a,l){ return a+(l.balance||0); },0);
+      wcDiv.innerHTML =
+        mk2('Total AR',          '$'+fmtM(arTotal)+'M',  arCusts.length+' customers &nbsp;|&nbsp; '+arOverduePct+'% overdue 90d+', 'red')+
+        mk2('Total AP',          '$'+fmtM(apTotal)+'M',  apVends.length+' vendors &nbsp;|&nbsp; Net W/C: $'+fmtM(netWC)+'M', '')+
+        mk2('Credit Limit',      '$'+fmtM(bt.limit||0)+'M', utilPct+'% utilized', 'accent')+
+        mk2('Credit Available',  '$'+fmtM(bt.available||0)+'M', 'Headroom across all banks', 'green')+
+        mk2('Loan Balances',     '$'+fmtM(loanBal)+'M', loans.length+' facilities', '')+
+        mk2('CAPEX Jan 2026',    '$'+fmtM(cap26)+'M', 'FY 2025 full year: $'+fmtM(cap25)+'M', '');
+    }
+
+    // ── E: Facilities chart ────────────────────────────────────────────
+    var bl = fd.bank_limits || [];
+    makeChart('es-fac-chart', {type:'bar', data:{
+      labels: bl.map(function(b){ return b.bank+'/'+b.entity; }),
+      datasets:[
+        {label:'Utilized', data:bl.map(function(b){ return +(b.used/1e6).toFixed(2); }),
+          backgroundColor:'rgba(204,0,0,0.70)', borderRadius:3},
+        {label:'Available',data:bl.map(function(b){ return +(b.available/1e6).toFixed(2); }),
+          backgroundColor:'rgba(26,107,60,0.60)', borderRadius:3},
+      ]
+    }, options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom',labels:{font:{size:10}}}},
+      scales:{
+        x:{...ax(),stacked:true,ticks:{...ax().ticks,maxRotation:35,font:{size:9}}},
+        y:{...ax(),stacked:true,ticks:{...ax().ticks,callback:function(v){ return '$'+v.toFixed(1)+'M'; }}}
+      }}});
+
+    // ── E: CAPEX chart ─────────────────────────────────────────────────
+    var capex = (fpd.capex_bu||[]).filter(function(c){ return c.fy2025>0||c.jan2026>0; })
+                 .sort(function(a,b){ return b.fy2025-a.fy2025; });
+    makeChart('es-capex-chart', {type:'bar', data:{
+      labels: capex.map(function(c){ return c.bu; }),
+      datasets:[
+        {label:'FY 2025',  data:capex.map(function(c){ return +(c.fy2025/1e6).toFixed(3); }),
+          backgroundColor:'rgba(31,45,90,0.82)', borderRadius:4},
+        {label:'Jan 2026', data:capex.map(function(c){ return +(c.jan2026/1e6).toFixed(3); }),
+          backgroundColor:'rgba(201,168,76,0.85)', borderRadius:4},
+      ]
+    }, options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom',labels:{font:{size:10}}}},
+      scales:{
+        x:{...ax(),ticks:{...ax().ticks,maxRotation:35,font:{size:9}}},
+        y:{...ax(),ticks:{...ax().ticks,callback:function(v){ return '$'+v.toFixed(2)+'M'; }}}
+      }}});
+
+    // ── F: Executive Signals ───────────────────────────────────────────
+    var alertsDiv = document.getElementById('es-alerts');
+    if(alertsDiv){
+      var signals = [];
+      var mkSig = function(icon,title,body,color){
+        return '<div style="background:#fff;border:1px solid #e5e7eb;border-left:4px solid '+color+';border-radius:8px;padding:14px 16px">'+
+          '<div style="font-weight:700;font-size:12.5px;color:#1F2D5A;margin-bottom:5px">'+icon+' '+title+'</div>'+
+          '<div style="font-size:11.5px;color:#555;line-height:1.6">'+body+'</div></div>';
+      };
+
+      // Top BU by Jan 2026 revenue
+      if(bSorted.length>0){
+        var topBU=bSorted[0];
+        signals.push(mkSig('🏆','Top BU — January 2026',
+          '<strong>'+topBU.bu+'</strong> leads with <strong>$'+fmtM(topBU.rev_jan26)+'M</strong> revenue '+
+          'and EBITDA of $'+fmtM(topBU.ebitda_jan26)+'M ('+topBU.ebitda_pct_jan26.toFixed(1)+'% margin).',GOLD));
+      }
+
+      // Revenue run-rate vs FY2025
+      var runVsAct = rev25>0 ? (runRate/rev25*100).toFixed(0) : 0;
+      var runColor = runRate>=rev25 ? GREEN : (runRate>=rev25*0.85 ? GOLD : RED);
+      signals.push(mkSig('📈','FY 2026 Run-Rate vs FY 2025',
+        'Jan 2026 annualized run-rate of <strong>$'+fmtM(runRate)+'M</strong> is '+runVsAct+
+        '% of FY 2025 actual ($'+fmtM(rev25)+'M). '+(runRate>=rev25?'Tracking ahead of last year.':'Monitor closely to achieve full-year target.'),runColor));
+
+      // AR overdue flag
+      var arOvAmt = arCusts.reduce(function(s,c){ return s+(+c.days_90||0)+(+c.days_120||0)+(+c.over_120||0); },0);
+      signals.push(mkSig(arOvAmt>2e6?'🔴':'🟡','AR Collection Alert',
+        '<strong>$'+fmtM(arOvAmt)+'M</strong> ('+arOverduePct+'%) of AR is overdue 90+ days across '+
+        arCusts.length+' customers. '+(arOvAmt>5e6?'Immediate collection action recommended.':'Within acceptable range — continue monitoring.'),
+        arOvAmt>5e6?RED:GOLD));
+
+      // EBITDA margin signal
+      var ebMNum = parseFloat(ebM26);
+      signals.push(mkSig(ebMNum>=25?'🟢':ebMNum>=15?'🟡':'🔴','EBITDA Margin — January 2026',
+        'Group EBITDA margin for Jan 2026 is <strong>'+ebM26+'%</strong> vs FY 2025 full-year average of '+ebM25+
+        '%. '+(ebMNum>=parseFloat(ebM25)?'Margin improving — strong start to 2026.':'Margin compression vs prior year — cost review advised.'),
+        ebMNum>=parseFloat(ebM25)?GREEN:GOLD));
+
+      // Credit utilization
+      var utilNum = parseInt(utilPct);
+      signals.push(mkSig(utilNum>80?'🔴':utilNum>60?'🟡':'🟢','Credit Facility Utilization',
+        utilPct+'% of total credit limit ($'+fmtM(bt.limit||0)+'M) is utilized. '+
+        '$'+fmtM(bt.available||0)+'M headroom available. '+
+        (utilNum>80?'High utilization — consider refinancing options.':utilNum>60?'Moderate utilization — headroom adequate.':'Comfortable — ample capacity for growth initiatives.'),
+        utilNum>80?RED:utilNum>60?GOLD:GREEN));
+
+      // CAPEX Jan 2026
+      var capexRR = cap26 * 12;
+      signals.push(mkSig('🔧','CAPEX Investment Pace',
+        'Jan 2026 CAPEX of <strong>$'+fmtM(cap26)+'M</strong> (run-rate $'+fmtM(capexRR)+'M/yr vs FY 2025: $'+fmtM(cap25)+'M). '+
+        (capexRR<cap25?'Investment pace is below prior year — growth investments may lag.':'On track with prior-year investment level.'),
+        capexRR<cap25*0.8?GOLD:GREEN));
+
+      alertsDiv.innerHTML = signals.join('');
+    }
+
+    console.log('[Section 27] Executive Summary initialized.');
+  };
+
+})();
+// END Section 27
+
+// ══════════════════════════════════════════════════════════════════════
+// SECTION 28 — EXECUTIVE SUMMARY COMPLETE REWRITE (correct data + drills)
+// ══════════════════════════════════════════════════════════════════════
+(function(){
+
+  var NAVY='#1F2D5A', GOLD='#C9A84C', GREEN='#1A6B3C', RED='#CC3300';
+
+  // ── Utility: format millions to 1dp ───────────────────────────────
+  function fM(n){ return fmtM(n||0); }
+  function fV(n){
+    if(!n && n!==0) return '$0';
+    var abs = Math.abs(n);
+    if(abs>=1e6)  return (n<0?'-':'')+'$'+( abs/1e6).toFixed(2)+'M';
+    if(abs>=1e3)  return (n<0?'-':'')+'$'+(abs/1e3).toFixed(1)+'K';
+    return (n<0?'-':'')+'$'+abs.toFixed(0);
+  }
+  function pct(n){ return (n||0).toFixed(1)+'%'; }
+
+  // ── Helper: make a clickable KPI card ─────────────────────────────
+  function mkCard(l, v, s, c, fn){
+    var id = 'eskpi_'+Math.random().toString(36).slice(2,7);
+    var style = fn ? 'cursor:pointer;' : '';
+    var hint  = fn ? '<div style="font-size:9px;color:rgba(255,255,255,0.45);margin-top:4px">🔍 Click for detail</div>' : '';
+    var el = '<div class="kpi-card '+c+'" id="'+id+'" style="'+style+'">'+
+      '<div class="kpi-label">'+l+'</div>'+
+      '<div class="kpi-value">'+v+'</div>'+
+      '<div class="kpi-sub">'+s+'</div>'+hint+'</div>';
+    // register click after DOM insertion
+    if(fn){
+      setTimeout(function(){
+        var node = document.getElementById(id);
+        if(node) node.addEventListener('click', fn);
+      }, 50);
+    }
+    return el;
+  }
+
+  // ── Override initOverview with corrected version ──────────────────
+  window.initOverview = function(){ window._initExecSummaryFixed(); };
+  window.initOverviewExtension = function(){};
+
+  window._initExecSummaryFixed = function(){
+    var fpd = FP_DATA;
+    var ad  = AGEING_DATA;
+    var fd  = FAC_DATA;
+    var ax  = function(){ return { ticks:{color:'#555',font:{size:10}}, grid:{color:'rgba(0,0,0,0.05)'} }; };
+
+    // ── Core financials ──────────────────────────────────────────────
+    var rev25  = fpd.group_kpis.rev_2025     || 0;
+    var rev24  = fpd.group_kpis.rev_2024     || 0;
+    var ebd25  = fpd.group_kpis.ebitda_2025  || 0;
+    var ebd24  = fpd.group_kpis.ebitda_2024  || 0;
+    var gp25   = fpd.group_kpis.gp_2025      || 0;
+    var rev26  = fpd.group_kpis.rev_jan26    || 0;
+    var ebd26  = fpd.group_kpis.ebitda_jan26 || 0;
+    var gp26   = fpd.group_kpis.gp_jan26     || 0;
+    var cap25  = fpd.group_kpis.capex_2025   || 0;
+    var cap26  = fpd.group_kpis.capex_jan26  || 0;
+
+    var gpM26  = rev26>0 ? (gp26/rev26*100).toFixed(1)  : '0.0';
+    var ebM26  = rev26>0 ? (ebd26/rev26*100).toFixed(1) : '0.0';
+    var gpM25  = rev25>0 ? (gp25/rev25*100).toFixed(1)  : '0.0';
+    var ebM25  = rev25>0 ? (ebd25/rev25*100).toFixed(1) : '0.0';
+    var revYoY = rev24>0 ? ((rev25-rev24)/rev24*100).toFixed(1) : '0.0';
+    var ebYoY  = ebd24>0 ? ((ebd25-ebd24)/ebd24*100).toFixed(1): '0.0';
+    var runRate= rev26 * 12;
+
+    // ── AR / AP — correct field names ────────────────────────────────
+    // Individual records: field is 'amount' (not 'total')
+    // Overdue fields:  d91_120  +  over120  (AR)
+    //                  d90_120  +  over121  (AP)
+    var arCusts  = (ad.ar && ad.ar.customers) ? ad.ar.customers : [];
+    var apVends  = (ad.ap && ad.ap.vendors)   ? ad.ap.vendors   : [];
+
+    // Use pre-computed totals from ageing_data for accuracy
+    var arTotal  = (ad.ar && ad.ar.total) ? ad.ar.total : arCusts.reduce(function(s,c){ return s+(+c.amount||0); },0);
+    var apTotal  = (ad.ap && ad.ap.total) ? ad.ap.total : apVends.reduce(function(s,v){ return s+(+v.amount||0); },0);
+    var netWC    = arTotal - apTotal;
+
+    // AR overdue (90+ days) — use pre-computed buckets if available
+    var arBuckets  = (ad.ar && ad.ar.buckets) ? ad.ar.buckets : {};
+    var arOverdue  = (arBuckets.d91_120||0) + (arBuckets.d120plus||0);
+    if(arOverdue===0){
+      arOverdue = arCusts.reduce(function(s,c){ return s+(+c.d91_120||0)+(+c.over120||0); },0);
+    }
+    var arOverduePct = arTotal>0 ? (arOverdue/arTotal*100).toFixed(1) : '0.0';
+
+    // AP overdue (90+ days)
+    var apBuckets  = (ad.ap && ad.ap.buckets) ? ad.ap.buckets : {};
+    var apOverdue  = (apBuckets.d90_120||0) + (apBuckets.d121plus||0);
+    if(apOverdue===0){
+      apOverdue = apVends.reduce(function(s,v){ return s+(+v.d90_120||0)+(+v.over121||0); },0);
+    }
+
+    // Facilities
+    var bt       = fd.bank_totals || {};
+    var utilPct  = bt.limit>0 ? (bt.used/bt.limit*100).toFixed(0) : '0';
+    var loans    = (fd.loans||[]).filter(function(l){ return l.name!=='Sub-Total'; });
+    var loanBal  = loans.reduce(function(a,l){ return a+(l.balance||0); },0);
+
+    // Active BUs Jan 2026
+    var spots = (fpd.bu_spotlight||[]).filter(function(b){
+      return b.bu!=='TOTAL CoGS'&&b.bu!=='Sub-Total'&&b.bu!=='TOTAL'&&b.rev_jan26>0;
+    }).sort(function(a,b){ return b.rev_jan26-a.rev_jan26; });
+
+    // ── DRILL-DOWN helpers ───────────────────────────────────────────
+
+    function ddRevenue(){
+      var rows = spots.map(function(b,i){
+        return {cells:[
+          {v:i+1},{v:b.bu},
+          {v:'$'+fM(b.rev_jan26)+'M'},{v:'$'+fM(b.gp_jan26)+'M'},
+          {v:b.rev_jan26>0?(b.gp_jan26/b.rev_jan26*100).toFixed(1)+'%':'—'},
+          {v:'$'+fM(b.ebitda_jan26)+'M'},
+          {v:b.ebitda_pct_jan26.toFixed(1)+'%'}
+        ]};
+      });
+      var totalRev=spots.reduce(function(s,b){return s+b.rev_jan26;},0);
+      var totalGP =spots.reduce(function(s,b){return s+b.gp_jan26;},0);
+      var totalEB =spots.reduce(function(s,b){return s+b.ebitda_jan26;},0);
+      rows.push({_total:true,cells:[
+        {v:''},{v:'GROUP TOTAL'},
+        {v:'$'+fM(totalRev)+'M'},{v:'$'+fM(totalGP)+'M'},
+        {v:totalRev>0?(totalGP/totalRev*100).toFixed(1)+'%':'—'},
+        {v:'$'+fM(totalEB)+'M'},
+        {v:totalRev>0?(totalEB/totalRev*100).toFixed(1)+'%':'—'}
+      ]});
+      showDrillDown('💰','Revenue by Business Unit — January 2026',
+        'Top BU: '+spots[0].bu+' at $'+fM(spots[0].rev_jan26)+'M · Group total: $'+fM(totalRev)+'M',
+        'SAP ERP — Management Accounts Jan 2026', rows,
+        [{label:'#'},{label:'Business Unit'},{label:'Revenue',num:true},{label:'Gross Profit',num:true},
+         {label:'GP%',num:true},{label:'EBITDA',num:true},{label:'EBITDA%',num:true}]);
+    }
+
+    function ddGP(){
+      var rows = spots.map(function(b,i){
+        return {cells:[
+          {v:i+1},{v:b.bu},
+          {v:'$'+fM(b.rev_jan26)+'M'},{v:'$'+fM(b.gp_jan26)+'M'},
+          {v:b.rev_jan26>0?(b.gp_jan26/b.rev_jan26*100).toFixed(1)+'%':'—'},
+          {v:'$'+fM(b.rev_jan26-b.gp_jan26)+'M'}
+        ]};
+      });
+      showDrillDown('📊','Gross Profit by Business Unit — January 2026',
+        'Group GP: $'+fM(gp26)+'M · GP Margin: '+gpM26+'% · FY 2025 margin: '+gpM25+'%',
+        'SAP ERP — Management Accounts Jan 2026', rows,
+        [{label:'#'},{label:'Business Unit'},{label:'Revenue',num:true},{label:'Gross Profit',num:true},
+         {label:'GP%',num:true},{label:'CoGS',num:true}]);
+    }
+
+    function ddEBITDA(){
+      var rows = spots.map(function(b,i){
+        var clr = b.ebitda_jan26<0?RED:b.ebitda_pct_jan26>30?GREEN:'';
+        return {cells:[
+          {v:i+1},{v:b.bu},
+          {v:'$'+fM(b.rev_jan26)+'M'},
+          {v:'$'+fM(b.ebitda_jan26)+'M',color:clr},
+          {v:b.ebitda_pct_jan26.toFixed(1)+'%',color:clr},
+          {v:b.ebitda_pct_2025.toFixed(1)+'%'}
+        ]};
+      });
+      var totalEB=spots.reduce(function(s,b){return s+b.ebitda_jan26;},0);
+      rows.push({_total:true,cells:[
+        {v:''},{v:'GROUP TOTAL'},{v:'$'+fM(rev26)+'M'},
+        {v:'$'+fM(totalEB)+'M'},{v:rev26>0?(totalEB/rev26*100).toFixed(1)+'%':'—'},{v:ebM25+'%'}
+      ]});
+      showDrillDown('📈','EBITDA by Business Unit — January 2026',
+        'Group EBITDA: $'+fM(ebd26)+'M · Margin: '+ebM26+'% · Best BU: '+
+        (spots.slice().sort(function(a,b){return b.ebitda_pct_jan26-a.ebitda_pct_jan26;})[0]||{bu:'—'}).bu,
+        'SAP ERP — Group P&L Jan 2026', rows,
+        [{label:'#'},{label:'Business Unit'},{label:'Revenue',num:true},{label:'EBITDA',num:true},
+         {label:'EBITDA% Jan26',num:true},{label:'EBITDA% FY25',num:true}]);
+    }
+
+    function ddAR(){
+      // Top 20 customers by amount
+      var top20 = arCusts.slice().sort(function(a,b){ return b.amount-a.amount; }).slice(0,20);
+      var rows = top20.map(function(c,i){
+        var od = (c.d91_120||0)+(c.over120||0);
+        return {cells:[
+          {v:i+1},{v:c.customer||c.name||'—'},{v:c.bu||'—'},
+          {v:fV(c.amount)},
+          {v:fV(c.not_due||0)},{v:fV(c.d0_30||0)},{v:fV(c.d31_60||0)},
+          {v:fV(c.d61_90||0)},
+          {v:fV(od), color:od>100000?RED:od>50000?GOLD:''}
+        ]};
+      });
+      // Bucket summary
+      var bkts = arBuckets;
+      rows.unshift({_total:true,cells:[
+        {v:'Σ'},{v:'ALL '+arCusts.length+' CUSTOMERS — Ageing Summary'},{v:''},
+        {v:fV(arTotal)},
+        {v:fV(bkts.not_due||0)},{v:fV(bkts.d0_30||0)},{v:fV(bkts.d31_60||0)},
+        {v:fV(bkts.d61_90||0)},
+        {v:fV(arOverdue),color:RED}
+      ]});
+      showDrillDown('🧾','AR Outstanding — Ageing Detail (Top 20 by Balance)',
+        'Total AR: $'+fM(arTotal)+'M · Overdue 90d+: $'+fM(arOverdue)+'M ('+arOverduePct+'%) · '+arCusts.length+' customers',
+        'SAP ERP — AR Ageing Report Jan 2026', rows,
+        [{label:'#'},{label:'Customer'},{label:'BU'},
+         {label:'Total',num:true},{label:'Not Due',num:true},{label:'0-30d',num:true},
+         {label:'31-60d',num:true},{label:'61-90d',num:true},{label:'90d+ Overdue',num:true}]);
+    }
+
+    function ddAP(){
+      var top20 = apVends.slice().sort(function(a,b){ return b.amount-a.amount; }).slice(0,20);
+      var rows = top20.map(function(v,i){
+        var od = (v.d90_120||0)+(v.over121||0);
+        return {cells:[
+          {v:i+1},{v:v.vendor||v.name||'—'},{v:v.bu||'—'},
+          {v:fV(v.amount)},
+          {v:fV(v.future||0)},{v:fV(v.d0_30||0)},{v:fV(v.d31_60||0)},{v:fV(v.d61_90||0)},
+          {v:fV(od), color:od>50000?RED:''}
+        ]};
+      });
+      var bkts = apBuckets;
+      rows.unshift({_total:true,cells:[
+        {v:'Σ'},{v:'ALL '+apVends.length+' VENDORS — Ageing Summary'},{v:''},
+        {v:fV(apTotal)},
+        {v:fV(bkts.future||0)},{v:fV(bkts.d0_30||0)},{v:fV(bkts.d31_60||0)},{v:fV(bkts.d61_90||0)},
+        {v:fV(apOverdue),color:RED}
+      ]});
+      showDrillDown('📦','AP Outstanding — Ageing Detail (Top 20 by Balance)',
+        'Total AP: $'+fM(apTotal)+'M · Net W/C: $'+fM(netWC)+'M · Overdue 90d+: $'+fM(apOverdue)+'M · '+apVends.length+' vendors',
+        'SAP ERP — AP Ageing Report Jan 2026', rows,
+        [{label:'#'},{label:'Vendor'},{label:'BU'},
+         {label:'Total',num:true},{label:'Future',num:true},{label:'0-30d',num:true},
+         {label:'31-60d',num:true},{label:'61-90d',num:true},{label:'90d+ Overdue',num:true}]);
+    }
+
+    function ddCredit(){
+      var bl = fd.bank_limits || [];
+      var rows = bl.map(function(b,i){
+        var u = b.used||0, lim=b.limit||0, av=b.available||0;
+        return {cells:[
+          {v:i+1},{v:b.bank||'—'},{v:b.entity||'—'},
+          {v:fV(lim)},{v:fV(u),color:lim>0&&u/lim>0.8?RED:''},{v:fV(av),color:GREEN},
+          {v:lim>0?(u/lim*100).toFixed(0)+'%':'—'}
+        ]};
+      });
+      rows.push({_total:true,cells:[
+        {v:''},{v:'TOTAL'},{v:''},
+        {v:fV(bt.limit||0)},{v:fV(bt.used||0),color:RED},{v:fV(bt.available||0),color:GREEN},
+        {v:utilPct+'%'}
+      ]});
+      showDrillDown('🏦','Credit Facilities — Utilization by Bank',
+        'Total limit: $'+fM(bt.limit||0)+'M · Utilized: $'+fM(bt.used||0)+'M ('+utilPct+'%) · Headroom: $'+fM(bt.available||0)+'M',
+        'Bank Statements / Facilities Register', rows,
+        [{label:'#'},{label:'Bank'},{label:'Entity'},{label:'Limit',num:true},
+         {label:'Utilized',num:true},{label:'Available',num:true},{label:'Util%',num:true}]);
+    }
+
+    function ddWC(){
+      // AR bucket breakdown
+      var bktsAR = arBuckets;
+      var bktsAP = apBuckets;
+      var rows = [
+        {_total:true, cells:[{v:'AR'},{v:'Accounts Receivable ('+arCusts.length+' customers)'},{v:''},
+          {v:fV(arTotal)},{v:arOverduePct+'% overdue 90d+'}]},
+        {cells:[{v:''},{v:'Not Due'},{v:''},{v:fV(bktsAR.not_due||0)},{v:'Current'}]},
+        {cells:[{v:''},{v:'0–30 Days'},{v:''},{v:fV(bktsAR.d0_30||0)},{v:'Current'}]},
+        {cells:[{v:''},{v:'31–60 Days'},{v:''},{v:fV(bktsAR.d31_60||0)},{v:'Monitor'}]},
+        {cells:[{v:''},{v:'61–90 Days'},{v:''},{v:fV(bktsAR.d61_90||0)},{v:'Overdue',color:GOLD}]},
+        {cells:[{v:''},{v:'91–120 Days'},{v:''},{v:fV(bktsAR.d91_120||0)},{v:'Overdue',color:RED}]},
+        {cells:[{v:''},{v:'120+ Days'},{v:''},{v:fV(bktsAR.d120plus||0)},{v:'Critical',color:RED}]},
+        {_total:true, cells:[{v:'AP'},{v:'Accounts Payable ('+apVends.length+' vendors)'},{v:''},
+          {v:fV(apTotal)},{v:''}]},
+        {cells:[{v:''},{v:'Future / Not Due'},{v:''},{v:fV(bktsAP.future||0)},{v:'Not Due'}]},
+        {cells:[{v:''},{v:'0–30 Days'},{v:''},{v:fV(bktsAP.d0_30||0)},{v:'Current'}]},
+        {cells:[{v:''},{v:'31–60 Days'},{v:''},{v:fV(bktsAP.d31_60||0)},{v:'Monitor'}]},
+        {cells:[{v:''},{v:'61–90 Days'},{v:''},{v:fV(bktsAP.d61_90||0)},{v:'Overdue',color:GOLD}]},
+        {cells:[{v:''},{v:'90–120 Days'},{v:''},{v:fV(bktsAP.d90_120||0)},{v:'Overdue',color:RED}]},
+        {cells:[{v:''},{v:'121+ Days'},{v:''},{v:fV(bktsAP.d121plus||0)},{v:'Critical',color:RED}]},
+        {_total:true, cells:[{v:'NWC'},{v:'Net Working Capital (AR − AP)'},{v:''},
+          {v:fV(netWC),color:netWC>=0?GREEN:RED},{v:''}]}
+      ];
+      showDrillDown('💰','Working Capital — AR & AP Ageing Breakdown',
+        'AR: $'+fM(arTotal)+'M · AP: $'+fM(apTotal)+'M · Net W/C: $'+fM(netWC)+'M · AR overdue 90d+: $'+fM(arOverdue)+'M',
+        'SAP ERP — AR/AP Ageing Report Jan 2026', rows,
+        [{label:'Cat.'},{label:'Description'},{label:''},{label:'Amount',num:true},{label:'Status'}]);
+    }
+
+    function ddCapex(){
+      var capex = (fpd.capex_bu||[]).filter(function(c){ return c.fy2025>0||c.jan2026>0; })
+        .sort(function(a,b){ return b.fy2025-a.fy2025; });
+      var rows = capex.map(function(c,i){
+        return {cells:[{v:i+1},{v:c.bu},{v:fV(c.fy2025)},{v:fV(c.jan2026)},
+          {v:fV(c.jan2026*12)+' est.'}]};
+      });
+      rows.push({_total:true,cells:[{v:''},{v:'TOTAL'},
+        {v:fV(cap25)},{v:fV(cap26)},{v:fV(cap26*12)+' est.'}]});
+      showDrillDown('🔧','CAPEX by Business Unit — FY 2025 vs Jan 2026',
+        'FY 2025 total: $'+fM(cap25)+'M · Jan 2026: $'+fM(cap26)+'M · Run-rate: $'+fM(cap26*12)+'M/yr',
+        'SAP ERP — Asset Register', rows,
+        [{label:'#'},{label:'Business Unit'},{label:'FY 2025',num:true},
+         {label:'Jan 2026',num:true},{label:'2026 Run-Rate',num:true}]);
+    }
+
+    // ── A: YTD Flash Scorecard (corrected) ──────────────────────────
+    var ytdDiv = document.getElementById('es-ytd-kpis');
+    if(ytdDiv){
+      ytdDiv.innerHTML =
+        '<div style="grid-column:1/-1;background:linear-gradient(90deg,rgba(201,168,76,0.12),rgba(201,168,76,0.04));'+
+          'border:1px solid rgba(201,168,76,0.35);border-radius:8px;padding:10px 18px;'+
+          'display:flex;align-items:center;justify-content:space-between;margin-bottom:2px">'+
+          '<div><span style="font-weight:700;color:#C9A84C;font-size:13px">📅 January 2026 — Monthly Flash &nbsp;|&nbsp; 2026 YTD: 1 Month Elapsed</span></div>'+
+          '<div style="font-size:11px;color:#666">Annualized Run-Rate: <strong style="color:#1F2D5A;font-size:13px">$'+fM(runRate)+'M</strong> &nbsp;|&nbsp; '+
+          'FY 2025 Actual: <strong style="color:#1F2D5A">$'+fM(rev25)+'M</strong></div></div>'+
+        mkCard('Jan 2026 Revenue',
+          '$'+fM(rev26)+'M',
+          'Run-rate: $'+fM(runRate)+'M/yr &nbsp;|&nbsp; FY25 YoY: +'+revYoY+'%',
+          'accent', ddRevenue)+
+        mkCard('Gross Profit',
+          '$'+fM(gp26)+'M',
+          'GP Margin: '+gpM26+'% &nbsp;|&nbsp; FY25: '+gpM25+'%',
+          'green', ddGP)+
+        mkCard('EBITDA',
+          '$'+fM(ebd26)+'M',
+          'EBITDA Margin: '+ebM26+'% &nbsp;|&nbsp; FY25: '+ebM25+'%',
+          'green', ddEBITDA)+
+        mkCard('AR Outstanding',
+          '$'+fM(arTotal)+'M',
+          arOverduePct+'% overdue (90d+) &nbsp;|&nbsp; '+arCusts.length+' customers',
+          'red', ddAR)+
+        mkCard('AP Outstanding',
+          '$'+fM(apTotal)+'M',
+          'Net W/C: $'+fM(netWC)+'M &nbsp;|&nbsp; '+apVends.length+' vendors',
+          '', ddAP)+
+        mkCard('Credit Headroom',
+          '$'+fM(bt.available||0)+'M',
+          utilPct+'% utilized of $'+fM(bt.limit||0)+'M limit',
+          '', ddCredit);
+    }
+
+    // ── E: Working Capital KPIs (corrected + clickable) ─────────────
+    var wcDiv = document.getElementById('es-wc-kpis');
+    if(wcDiv){
+      wcDiv.innerHTML =
+        mkCard('Total AR Outstanding',  '$'+fM(arTotal)+'M',
+          arCusts.length+' customers &nbsp;|&nbsp; '+arOverduePct+'% overdue 90d+', 'red', ddAR)+
+        mkCard('Total AP Outstanding',  '$'+fM(apTotal)+'M',
+          apVends.length+' vendors', '', ddAP)+
+        mkCard('Net Working Capital',   '$'+fM(netWC)+'M',
+          'AR − AP &nbsp;|&nbsp; AR overdue 90d+: $'+fM(arOverdue)+'M', netWC>=0?'green':'red', ddWC)+
+        mkCard('Credit Limit',         '$'+fM(bt.limit||0)+'M',
+          utilPct+'% utilized', 'accent', ddCredit)+
+        mkCard('Credit Available',     '$'+fM(bt.available||0)+'M',
+          'Headroom across all banks', 'green', ddCredit)+
+        mkCard('CAPEX Jan 2026',       '$'+fM(cap26)+'M',
+          'Run-rate: $'+fM(cap26*12)+'M/yr &nbsp;|&nbsp; FY25: $'+fM(cap25)+'M', '', ddCapex);
+    }
+
+    // ── Charts: same as Section 27 — no change needed ───────────────
+    var yrLbls    = fpd.year_labels   || [];
+    var revAnnual = fpd.rev_annual    || [];
+    var ebdAnnual = fpd.ebitda_annual || [];
+    var cogsAnn   = fpd.cogs_annual   || [];
+    var colors8   = ['#1F2D5A','#C9A84C','#CC3300','#1A6B3C','#4e7bd4','#e07b39','#6c757d','#a855f7','#0ea5e9','#d97706'];
+
+    // B: Revenue + EBITDA trend
+    makeChart('es-rev-trend', {type:'bar', data:{labels:yrLbls, datasets:[
+      {label:'Revenue $M',data:revAnnual.map(function(v){return +(v/1e6).toFixed(2);}),
+       backgroundColor:yrLbls.map(function(_,i){return i===yrLbls.length-1?'rgba(201,168,76,0.9)':'rgba(31,45,90,0.80)';}),borderRadius:3,order:2},
+      {label:'EBITDA $M', data:ebdAnnual.map(function(v){return +(v/1e6).toFixed(2);}),
+       type:'line',borderColor:GREEN,backgroundColor:'rgba(26,107,60,0.08)',pointBackgroundColor:GREEN,pointRadius:3,borderWidth:2.5,fill:false,tension:0.3,order:1}
+    ]}, options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom',labels:{font:{size:10}}}},
+      scales:{x:ax(),y:{...ax(),ticks:{...ax().ticks,callback:function(v){return '$'+v.toFixed(0)+'M';}}}}}});
+
+    // B: YoY Growth
+    var yoy=revAnnual.map(function(v,i){return i===0?0:+((v-revAnnual[i-1])/revAnnual[i-1]*100).toFixed(1);});
+    makeChart('es-yoy-growth',{type:'bar',data:{labels:yrLbls,datasets:[{
+      label:'YoY Revenue Growth %',data:yoy,
+      backgroundColor:yoy.map(function(v){return v>=0?'rgba(26,107,60,0.75)':'rgba(204,0,0,0.75)';}),borderRadius:4
+    }]},options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){return ctx.parsed.y.toFixed(1)+'%';}}}},
+      scales:{x:ax(),y:{...ax(),ticks:{...ax().ticks,callback:function(v){return v+'%';}}}}}});
+
+    // C: BU bar Jan26
+    var bSorted = spots.slice();
+    makeChart('es-bu-bar26',{type:'bar',data:{labels:bSorted.map(function(b){return b.bu;}),datasets:[
+      {label:'Revenue Jan 26',data:bSorted.map(function(b){return +(b.rev_jan26/1e6).toFixed(3);}),backgroundColor:'rgba(31,45,90,0.82)',borderRadius:4},
+      {label:'EBITDA Jan 26', data:bSorted.map(function(b){return +(b.ebitda_jan26/1e6).toFixed(3);}),
+       backgroundColor:bSorted.map(function(b){return b.ebitda_jan26>=0?'rgba(201,168,76,0.85)':'rgba(204,0,0,0.75)';}),borderRadius:4}
+    ]},options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom',labels:{font:{size:10}}}},
+      scales:{x:{...ax(),ticks:{...ax().ticks,maxRotation:35,font:{size:9}}},
+        y:{...ax(),ticks:{...ax().ticks,callback:function(v){return '$'+v.toFixed(2)+'M';}}}}}});
+
+    // C: BU donut Jan26
+    var bPos=bSorted.filter(function(b){return b.rev_jan26>0;});
+    makeChart('es-bu-donut26',{type:'doughnut',data:{
+      labels:bPos.map(function(b){return b.bu;}),
+      datasets:[{data:bPos.map(function(b){return +(b.rev_jan26/1e6).toFixed(3);}),
+        backgroundColor:bPos.map(function(_,i){return colors8[i%colors8.length];}),borderWidth:2,borderColor:'#fff'}]
+    },options:{responsive:true,maintainAspectRatio:false,cutout:'52%',
+      plugins:{legend:{position:'right',labels:{font:{size:9},boxWidth:10}},
+        tooltip:{callbacks:{label:function(ctx){return ctx.label+': $'+ctx.parsed.toFixed(2)+'M';}}}}}});
+
+    // D: EBITDA margin by BU
+    var bMargin=(fpd.bu_spotlight||[]).filter(function(b){
+      return b.bu!=='TOTAL CoGS'&&b.bu!=='Sub-Total'&&b.bu!=='TOTAL'&&
+             (b.ebitda_pct_2025!==0||b.ebitda_pct_jan26!==0);
+    }).sort(function(a,b){return b.ebitda_pct_2025-a.ebitda_pct_2025;});
+    makeChart('es-ebitda-bu-margin',{type:'bar',data:{labels:bMargin.map(function(b){return b.bu;}),datasets:[
+      {label:'FY 2025 EBITDA%',data:bMargin.map(function(b){return +b.ebitda_pct_2025;}),backgroundColor:'rgba(31,45,90,0.75)',borderRadius:4},
+      {label:'Jan 2026 EBITDA%',data:bMargin.map(function(b){return +b.ebitda_pct_jan26;}),
+       backgroundColor:bMargin.map(function(b){return b.ebitda_pct_jan26>=0?'rgba(201,168,76,0.85)':'rgba(204,0,0,0.7)';}),borderRadius:4}
+    ]},options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom',labels:{font:{size:10}}}},
+      scales:{x:{...ax(),ticks:{...ax().ticks,maxRotation:35,font:{size:9}}},
+        y:{...ax(),ticks:{...ax().ticks,callback:function(v){return v.toFixed(0)+'%';}}}}}});
+
+    // D: Margin trend
+    var gpPct =revAnnual.map(function(r,i){return r>0?(r-cogsAnn[i])/r*100:0;});
+    var ebPct =revAnnual.map(function(r,i){return r>0?ebdAnnual[i]/r*100:0;});
+    makeChart('es-margin-trend-new',{type:'line',data:{labels:yrLbls,datasets:[
+      {label:'GP %',    data:gpPct.map(function(v){return +v.toFixed(1);}),borderColor:GOLD,backgroundColor:'rgba(201,168,76,0.10)',borderWidth:2.5,tension:0.3,pointRadius:3,fill:false},
+      {label:'EBITDA %',data:ebPct.map(function(v){return +v.toFixed(1);}),borderColor:GREEN,backgroundColor:'rgba(26,107,60,0.08)',borderWidth:2.5,tension:0.3,pointRadius:3,fill:false}
+    ]},options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom',labels:{font:{size:10}}}},
+      scales:{x:ax(),y:{...ax(),ticks:{...ax().ticks,callback:function(v){return v.toFixed(0)+'%';}}}}}});
+
+    // E: Facilities chart
+    var bl=fd.bank_limits||[];
+    makeChart('es-fac-chart',{type:'bar',data:{labels:bl.map(function(b){return b.bank+'/'+b.entity;}),datasets:[
+      {label:'Utilized', data:bl.map(function(b){return +(b.used/1e6).toFixed(2);}),backgroundColor:'rgba(204,0,0,0.70)',borderRadius:3},
+      {label:'Available',data:bl.map(function(b){return +(b.available/1e6).toFixed(2);}),backgroundColor:'rgba(26,107,60,0.60)',borderRadius:3}
+    ]},options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom',labels:{font:{size:10}}}},
+      scales:{x:{...ax(),stacked:true,ticks:{...ax().ticks,maxRotation:35,font:{size:9}}},
+        y:{...ax(),stacked:true,ticks:{...ax().ticks,callback:function(v){return '$'+v.toFixed(1)+'M';}}}}}});
+
+    // E: CAPEX chart
+    var capex=(fpd.capex_bu||[]).filter(function(c){return c.fy2025>0||c.jan2026>0;}).sort(function(a,b){return b.fy2025-a.fy2025;});
+    makeChart('es-capex-chart',{type:'bar',data:{labels:capex.map(function(c){return c.bu;}),datasets:[
+      {label:'FY 2025', data:capex.map(function(c){return +(c.fy2025/1e6).toFixed(3);}),backgroundColor:'rgba(31,45,90,0.82)',borderRadius:4},
+      {label:'Jan 2026',data:capex.map(function(c){return +(c.jan2026/1e6).toFixed(3);}),backgroundColor:'rgba(201,168,76,0.85)',borderRadius:4}
+    ]},options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom',labels:{font:{size:10}}}},
+      scales:{x:{...ax(),ticks:{...ax().ticks,maxRotation:35,font:{size:9}}},
+        y:{...ax(),ticks:{...ax().ticks,callback:function(v){return '$'+v.toFixed(2)+'M';}}}}}});
+
+    // ── F: Executive Signals (corrected data) ────────────────────────
+    var alertsDiv = document.getElementById('es-alerts');
+    if(alertsDiv){
+      var mkSig = function(icon,title,body,color,fn){
+        var id='esig_'+Math.random().toString(36).slice(2,7);
+        var hint = fn?'<div style="font-size:9px;color:#aaa;margin-top:5px">🔍 Click to view detail</div>':'';
+        var el = '<div id="'+id+'" style="background:#fff;border:1px solid #e5e7eb;border-left:4px solid '+color+
+          ';border-radius:8px;padding:14px 16px;'+(fn?'cursor:pointer;':'')+'">' +
+          '<div style="font-weight:700;font-size:12.5px;color:#1F2D5A;margin-bottom:5px">'+icon+' '+title+'</div>'+
+          '<div style="font-size:11.5px;color:#555;line-height:1.6">'+body+'</div>'+hint+'</div>';
+        if(fn){ setTimeout(function(){ var n=document.getElementById(id); if(n) n.onclick=fn; },60); }
+        return el;
+      };
+
+      var signals = [];
+
+      // Top BU
+      if(spots.length>0){
+        var top1=spots[0];
+        signals.push(mkSig('🏆','Top BU — January 2026',
+          '<strong>'+top1.bu+'</strong> leads with revenue of <strong>$'+fM(top1.rev_jan26)+'M</strong>'+
+          ', EBITDA <strong>$'+fM(top1.ebitda_jan26)+'M</strong> ('+top1.ebitda_pct_jan26.toFixed(1)+'% margin). '+
+          spots.length+' active BUs in Jan 2026.',GOLD,ddRevenue));
+      }
+
+      // Revenue run-rate
+      var rrPct = rev25>0?(runRate/rev25*100).toFixed(0):0;
+      var rrClr = runRate>=rev25?GREEN:runRate>=rev25*0.85?GOLD:RED;
+      signals.push(mkSig('📈','FY 2026 Revenue Run-Rate',
+        'Jan 2026 annualized run-rate: <strong>$'+fM(runRate)+'M</strong> = <strong>'+rrPct+'%</strong> of FY 2025 actual ($'+fM(rev25)+'M). '+
+        (runRate>=rev25?'On track to exceed prior year.':'Early month — monitor next quarters closely.'),rrClr,ddRevenue));
+
+      // AR collection — corrected
+      var arOdAmt = arOverdue;
+      var arOdPct = parseFloat(arOverduePct);
+      signals.push(mkSig(arOdAmt>5e6?'🔴':'🟡','AR Collection Risk',
+        'Total AR: <strong>$'+fM(arTotal)+'M</strong> across <strong>'+arCusts.length+' customers</strong>. '+
+        'Overdue 90+ days: <strong>$'+fM(arOdAmt)+'M ('+arOverduePct+'%)</strong>. '+
+        (arOdAmt>5e6?'Significant overdue exposure — immediate collection action recommended.':
+         arOdAmt>2e6?'Moderate overdue — escalate top accounts.':'Within acceptable range.'),
+        arOdAmt>5e6?RED:GOLD, ddAR));
+
+      // Working capital
+      signals.push(mkSig(netWC>0?'🟢':'🔴','Net Working Capital',
+        'Net W/C: <strong>$'+fM(netWC)+'M</strong> (AR $'+fM(arTotal)+'M − AP $'+fM(apTotal)+'M). '+
+        (netWC>0?'Positive working capital — healthy liquidity position.':'Negative W/C — AR collection acceleration needed.'),
+        netWC>0?GREEN:RED, ddWC));
+
+      // EBITDA margin
+      var ebN=parseFloat(ebM26), ebN25=parseFloat(ebM25);
+      signals.push(mkSig(ebN>=25?'🟢':ebN>=15?'🟡':'🔴','EBITDA Margin — January 2026',
+        'Group EBITDA margin: <strong>'+ebM26+'%</strong> vs FY 2025 avg <strong>'+ebM25+'%</strong>. '+
+        (ebN>=ebN25?'Margin expanding — strong cost control in Jan 2026.':'Margin compression vs prior year — review cost base.'),
+        ebN>=ebN25?GREEN:GOLD, ddEBITDA));
+
+      // Credit utilization
+      var uN=parseInt(utilPct);
+      signals.push(mkSig(uN>80?'🔴':uN>60?'🟡':'🟢','Credit Facility Utilization',
+        utilPct+'% of credit limit ($'+fM(bt.limit||0)+'M) utilized. Headroom: <strong>$'+fM(bt.available||0)+'M</strong>. '+
+        (uN>80?'High utilization — consider renegotiating facilities.':uN>60?'Moderate — adequate for near-term needs.':'Comfortable — ample capacity.'),
+        uN>80?RED:uN>60?GOLD:GREEN, ddCredit));
+
+      alertsDiv.innerHTML = signals.join('');
+    }
+
+    console.log('[Section 28] Executive Summary fixed & drills loaded. AR=$'+fM(arTotal)+'M, AP=$'+fM(apTotal)+'M, NWC=$'+fM(netWC)+'M');
+  };
+
+})();
+// END Section 28
+
+// ══════════════════════════════════════════════════════════════════════
+// SECTION 29 — EXECUTIVE SUMMARY FILTER CONTROLS (Year / BU / Period)
+// ══════════════════════════════════════════════════════════════════════
+(function(){
+'use strict';
+
+var NAVY='#1F2D5A', GOLD='#C9A84C', GREEN='#1A6B3C', RED='#CC3300';
+
+// ── Number formatters ──────────────────────────────────────────────
+function fM(n){ return fmtM(n||0); }
+function fV(n){
+  if(!n && n!==0) return '$0';
+  var abs=Math.abs(n);
+  if(abs>=1e6) return (n<0?'-':'')+'$'+(abs/1e6).toFixed(2)+'M';
+  if(abs>=1e3) return (n<0?'-':'')+'$'+(abs/1e3).toFixed(1)+'K';
+  return (n<0?'-':'')+'$'+abs.toFixed(0);
+}
+
+// ── Destroy a Chart.js instance safely ──────────────────────────────
+function destroyChart(id){
+  try{
+    var inst = (window.Chart&&Chart.getChart)?Chart.getChart(id):null;
+    if(inst) inst.destroy();
+  }catch(e){}
+}
+
+// ── Axis defaults ────────────────────────────────────────────────────
+function ax(){ return {ticks:{color:'#555',font:{size:10}},grid:{color:'rgba(0,0,0,0.05)'}}; }
+
+// ── BU list (from bu_spotlight, excluding totals) ────────────────────
+var ALL_BUS = (FP_DATA.bu_spotlight||[])
+  .filter(function(b){ return b.bu!=='TOTAL CoGS'&&b.bu!=='Sub-Total'&&b.bu!=='TOTAL'; })
+  .map(function(b){ return b.bu; });
+
+// ── Year labels & indices ────────────────────────────────────────────
+var YR_LABELS = FP_DATA.year_labels || [];
+var REV_ANN   = FP_DATA.rev_annual    || [];
+var EBD_ANN   = FP_DATA.ebitda_annual || [];
+var COGS_ANN  = FP_DATA.cogs_annual   || [];
+
+// ── Active filter state ──────────────────────────────────────────────
+var activeYear = 'Jan 2026';
+var activeBU   = 'all';
+
+// ══════════════════════════════════════════════════════════════════════
+// 1. REBUILD page-overview with filter bar + placeholders
+// ══════════════════════════════════════════════════════════════════════
+window.initOverview = function(){
+  window.initOverviewExtension = function(){};
+  var cont = document.getElementById('page-overview');
+  if(!cont) return;
+
+  // Build year <options>
+  var yrOpts = YR_LABELS.slice().reverse().map(function(y){
+    return '<option value="'+y+'"'+(y==='Jan 2026'?' selected':'')+'>'+y+(y==='Jan 2026'?' (2026 YTD)':'')+'</option>';
+  }).join('');
+
+  // Build BU <options>
+  var buOpts = '<option value="all">All Business Units</option>'+
+    ALL_BUS.map(function(b){ return '<option value="'+b+'">'+b+'</option>'; }).join('');
+
+  var selStyle = 'background:#fff;border:1px solid rgba(201,168,76,0.5);border-radius:6px;'+
+    'padding:6px 10px;font-size:12px;color:#1F2D5A;font-weight:600;cursor:pointer;'+
+    'outline:none;min-width:150px';
+
+  cont.innerHTML =
+    // ── Masthead ──────────────────────────────────────────────────────
+    '<div style="background:linear-gradient(135deg,#1F2D5A 0%,#2C3E6B 100%);border-radius:10px;'+
+      'padding:16px 22px;margin-bottom:14px">'+
+      '<div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px">'+
+        '<div>'+
+          '<div style="color:#C9A84C;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Al Majal Group</div>'+
+          '<div style="color:#fff;font-size:20px;font-weight:800">Executive Summary</div>'+
+          '<div style="color:rgba(255,255,255,0.5);font-size:11px;margin-top:2px">Consolidated Group Performance &nbsp;|&nbsp; FY 2016 – Jan 2026 &nbsp;|&nbsp; All figures USD</div>'+
+        '</div>'+
+        '<div style="background:rgba(201,168,76,0.18);border:1px solid rgba(201,168,76,0.4);border-radius:8px;padding:4px 12px;color:#C9A84C;font-size:10px;font-weight:700;align-self:flex-start">CONFIDENTIAL</div>'+
+      '</div>'+
+      // Filter bar
+      '<div style="margin-top:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+
+        '<div style="color:rgba(255,255,255,0.6);font-size:11px;font-weight:600">📅 Period</div>'+
+        '<select id="es-yr-sel" style="'+selStyle+'">'+yrOpts+'</select>'+
+        '<div style="color:rgba(255,255,255,0.6);font-size:11px;font-weight:600;margin-left:6px">🏢 Business Unit</div>'+
+        '<select id="es-bu-sel" style="'+selStyle+'">'+buOpts+'</select>'+
+        '<button onclick="window.refreshExecTab()" style="background:#C9A84C;color:#1F2D5A;border:none;border-radius:6px;'+
+          'padding:7px 16px;font-size:12px;font-weight:700;cursor:pointer;margin-left:4px">🔄 Refresh</button>'+
+        '<div id="es-filter-badge" style="margin-left:auto;color:rgba(255,255,255,0.55);font-size:10.5px"></div>'+
+      '</div>'+
+    '</div>'+
+
+    // ── KPI Scorecard ─────────────────────────────────────────────────
+    '<div id="es-filter-banner"></div>'+
+    '<div class="kpi-grid" id="es-ytd-kpis" style="margin-bottom:16px"></div>'+
+
+    // ── Row 1: Trend + YoY ────────────────────────────────────────────
+    '<div id="es-section-trend" style="font-size:11.5px;font-weight:700;color:'+NAVY+';padding:7px 12px;background:rgba(31,45,90,0.07);border-left:4px solid '+NAVY+';border-radius:4px;margin:4px 0 10px">'+
+      '📈 &nbsp;Historical Performance Trend — FY 2016 to Jan 2026'+
+    '</div>'+
+    '<div class="chart-row cols-2">'+
+      '<div class="chart-box"><div class="chart-title"><span></span>Revenue & EBITDA — Full History</div><div class="chart-container h280"><canvas id="es-rev-trend"></canvas></div></div>'+
+      '<div class="chart-box"><div class="chart-title"><span></span>Year-on-Year Revenue Growth %</div><div class="chart-container h280"><canvas id="es-yoy-growth"></canvas></div></div>'+
+    '</div>'+
+
+    // ── Row 2: BU Performance ─────────────────────────────────────────
+    '<div id="es-section-bu" style="font-size:11.5px;font-weight:700;color:'+NAVY+';padding:7px 12px;background:rgba(31,45,90,0.07);border-left:4px solid '+NAVY+';border-radius:4px;margin:18px 0 10px">'+
+      '🏢 &nbsp;Business Unit Performance'+
+    '</div>'+
+    '<div class="chart-row cols-2">'+
+      '<div class="chart-box"><div class="chart-title"><span></span><span id="es-bu-bar-title">Revenue & EBITDA by Business Unit</span></div><div class="chart-container h300"><canvas id="es-bu-bar26"></canvas></div></div>'+
+      '<div class="chart-box"><div class="chart-title"><span></span><span id="es-bu-donut-title">Revenue Contribution by BU</span></div><div class="chart-container h300"><canvas id="es-bu-donut26"></canvas></div></div>'+
+    '</div>'+
+
+    // ── Row 3: Margins ────────────────────────────────────────────────
+    '<div style="font-size:11.5px;font-weight:700;color:'+NAVY+';padding:7px 12px;background:rgba(31,45,90,0.07);border-left:4px solid '+NAVY+';border-radius:4px;margin:18px 0 10px">'+
+      '📊 &nbsp;Profitability & Margin Analysis'+
+    '</div>'+
+    '<div class="chart-row cols-2">'+
+      '<div class="chart-box"><div class="chart-title"><span></span>EBITDA Margin % by BU — FY 2025 vs Jan 2026</div><div class="chart-container h280"><canvas id="es-ebitda-bu-margin"></canvas></div></div>'+
+      '<div class="chart-box"><div class="chart-title"><span></span>GP% & EBITDA% — Historical Trend</div><div class="chart-container h280"><canvas id="es-margin-trend-new"></canvas></div></div>'+
+    '</div>'+
+
+    // ── Row 4: Working Capital ────────────────────────────────────────
+    '<div style="font-size:11.5px;font-weight:700;color:'+NAVY+';padding:7px 12px;background:rgba(31,45,90,0.07);border-left:4px solid '+NAVY+';border-radius:4px;margin:18px 0 10px">'+
+      '💰 &nbsp;Working Capital & Credit Facilities'+
+    '</div>'+
+    '<div class="kpi-grid" id="es-wc-kpis" style="margin-bottom:12px"></div>'+
+    '<div class="chart-row cols-2">'+
+      '<div class="chart-box"><div class="chart-title"><span></span>Credit Facilities — Utilized vs Available</div><div class="chart-container h220"><canvas id="es-fac-chart"></canvas></div></div>'+
+      '<div class="chart-box"><div class="chart-title"><span></span>CAPEX by Business Unit — FY 2025 vs Jan 2026</div><div class="chart-container h220"><canvas id="es-capex-chart"></canvas></div></div>'+
+    '</div>'+
+
+    // ── Row 5: Signals ────────────────────────────────────────────────
+    '<div style="font-size:11.5px;font-weight:700;color:'+NAVY+';padding:7px 12px;background:rgba(31,45,90,0.07);border-left:4px solid '+NAVY+';border-radius:4px;margin:18px 0 10px">'+
+      '⚡ &nbsp;Executive Signals & Insights'+
+    '</div>'+
+    '<div id="es-alerts" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-bottom:32px"></div>';
+
+  // Attach filter change listeners
+  var yrSel = document.getElementById('es-yr-sel');
+  var buSel = document.getElementById('es-bu-sel');
+  if(yrSel) yrSel.addEventListener('change', function(){
+    activeYear = this.value;
+    // Enable/disable BU selector depending on data availability
+    var hasBU = (activeYear==='2025'||activeYear==='Jan 2026');
+    if(buSel){ buSel.disabled = !hasBU; if(!hasBU){ buSel.value='all'; activeBU='all'; } }
+    window.refreshExecTab();
+  });
+  if(buSel) buSel.addEventListener('change', function(){
+    activeBU = this.value;
+    window.refreshExecTab();
+  });
+
+  // Initial render
+  window.refreshExecTab();
+};
+
+// ══════════════════════════════════════════════════════════════════════
+// 2. REFRESH FUNCTION — rebuilds KPIs + all charts from active filters
+// ══════════════════════════════════════════════════════════════════════
+window.refreshExecTab = function(){
+  var fpd = FP_DATA, ad = AGEING_DATA, fd = FAC_DATA;
+
+  // Read current filter values
+  var yrSel = document.getElementById('es-yr-sel');
+  var buSel = document.getElementById('es-bu-sel');
+  activeYear = yrSel ? yrSel.value : activeYear;
+  activeBU   = buSel ? buSel.value : activeBU;
+
+  var isJan26  = (activeYear === 'Jan 2026');
+  var is2025   = (activeYear === '2025');
+  var hasBUData= (isJan26 || is2025);
+  var buFilter = (hasBUData && activeBU !== 'all') ? activeBU : null;
+
+  // Update BU selector state
+  if(buSel){ buSel.disabled = !hasBUData; }
+
+  // ── Get period metrics ──────────────────────────────────────────────
+  var yrIdx = YR_LABELS.indexOf(activeYear);
+  var periodLabel = isJan26 ? 'January 2026 (YTD)' : is2025 ? 'Full Year 2025' : 'Full Year '+activeYear;
+
+  var rev, ebitda, gp, capex, gpPct, ebPct;
+  var spots = (fpd.bu_spotlight||[]).filter(function(b){
+    return b.bu!=='TOTAL CoGS'&&b.bu!=='Sub-Total'&&b.bu!=='TOTAL';
+  });
+
+  if(buFilter){
+    // Single BU mode
+    var buData = spots.filter(function(b){ return b.bu===buFilter; })[0]||{};
+    var sfx = isJan26 ? '_jan26' : '_2025';
+    rev    = buData['rev'+sfx]    || 0;
+    ebitda = buData['ebitda'+sfx] || 0;
+    gp     = buData['gp'+sfx]     || 0;
+    capex  = buData['capex'+sfx]  || 0;
+    gpPct  = rev>0 ? (gp/rev*100).toFixed(1) : '0.0';
+    ebPct  = rev>0 ? (ebitda/rev*100).toFixed(1) : '0.0';
+  } else if(hasBUData){
+    // All BUs, recent period — use group_kpis
+    if(isJan26){
+      rev    = fpd.group_kpis.rev_jan26    || 0;
+      ebitda = fpd.group_kpis.ebitda_jan26 || 0;
+      gp     = fpd.group_kpis.gp_jan26     || 0;
+      capex  = fpd.group_kpis.capex_jan26  || 0;
+    } else {
+      rev    = fpd.group_kpis.rev_2025    || 0;
+      ebitda = fpd.group_kpis.ebitda_2025 || 0;
+      gp     = fpd.group_kpis.gp_2025     || 0;
+      capex  = fpd.group_kpis.capex_2025  || 0;
+    }
+    gpPct  = rev>0 ? (gp/rev*100).toFixed(1)    : '0.0';
+    ebPct  = rev>0 ? (ebitda/rev*100).toFixed(1) : '0.0';
+  } else {
+    // Historical year — group annual arrays
+    rev    = yrIdx>=0 ? REV_ANN[yrIdx]  || 0 : 0;
+    ebitda = yrIdx>=0 ? EBD_ANN[yrIdx]  || 0 : 0;
+    gp     = yrIdx>=0 ? REV_ANN[yrIdx] - (COGS_ANN[yrIdx]||0) : 0;
+    capex  = yrIdx>=0 ? (fpd.group_kpis.capex_2025||0) : 0; // only available for 2025
+    gpPct  = rev>0 ? (gp/rev*100).toFixed(1)    : '0.0';
+    ebPct  = rev>0 ? (ebitda/rev*100).toFixed(1) : '0.0';
+  }
+
+  // Prior year for comparison
+  var priorRev = 0, priorEB = 0;
+  if(yrIdx>0){
+    priorRev = REV_ANN[yrIdx-1] || 0;
+    priorEB  = EBD_ANN[yrIdx-1] || 0;
+  } else if(isJan26){
+    priorRev = fpd.group_kpis.rev_2025    || 0;
+    priorEB  = fpd.group_kpis.ebitda_2025 || 0;
+  }
+  var revGrw = priorRev>0 ? ((rev-priorRev)/priorRev*100).toFixed(1) : null;
+  var ebGrw  = priorEB>0  ? ((ebitda-priorEB)/priorEB*100).toFixed(1) : null;
+  var runRate = isJan26 ? rev*12 : null;
+
+  // AR / AP (only full picture for Jan 2026 or BU-filtered)
+  var arCusts = (ad.ar&&ad.ar.customers) ? ad.ar.customers : [];
+  var apVends = (ad.ap&&ad.ap.vendors)   ? ad.ap.vendors   : [];
+  if(buFilter){
+    // Normalize BU name (trailing spaces in ageing data)
+    arCusts = arCusts.filter(function(c){
+      return (c.bu||'').trim() === buFilter.trim();
+    });
+    apVends = apVends.filter(function(v){
+      return (v.bu||'').trim() === buFilter.trim();
+    });
+  }
+  var arTotal  = arCusts.reduce(function(s,c){return s+(+c.amount||0);},0);
+  var apTotal  = apVends.reduce(function(s,v){return s+(+v.amount||0);},0);
+  // For "all" without BU filter on Jan 26 use pre-computed total
+  if(!buFilter && isJan26){
+    arTotal = (ad.ar&&ad.ar.total)||arTotal;
+    apTotal = (ad.ap&&ad.ap.total)||apTotal;
+  }
+  var netWC   = arTotal - apTotal;
+  var arBkts  = (!buFilter&&ad.ar&&ad.ar.buckets) ? ad.ar.buckets : {};
+  var arOD    = buFilter
+    ? arCusts.reduce(function(s,c){return s+(+c.d91_120||0)+(+c.over120||0);},0)
+    : (arBkts.d91_120||0)+(arBkts.d120plus||0);
+  var arODPct = arTotal>0 ? (arOD/arTotal*100).toFixed(1) : '0.0';
+
+  // Facilities
+  var bt = fd.bank_totals||{};
+  var utilPct = bt.limit>0 ? (bt.used/bt.limit*100).toFixed(0):'0';
+
+  // ── Update filter badge ─────────────────────────────────────────────
+  var badge = document.getElementById('es-filter-badge');
+  if(badge) badge.textContent = 'Showing: '+periodLabel+(buFilter?' | '+buFilter:' | All BUs')+' | USD';
+
+  // ── Update section label ────────────────────────────────────────────
+  var buSec = document.getElementById('es-section-bu');
+  if(buSec) buSec.innerHTML = '🏢 &nbsp;Business Unit Performance — '+periodLabel+(buFilter?' | <strong>'+buFilter+'</strong>':'');
+
+  // ── Clickable KPI card maker ────────────────────────────────────────
+  function mkCard(l,v,s,c,fn){
+    var id='eskpi_'+Math.random().toString(36).slice(2,8);
+    var hint=fn?'<div style="font-size:9px;color:rgba(255,255,255,0.4);margin-top:3px">🔍 Click for detail</div>':'';
+    var out='<div class="kpi-card '+c+'" id="'+id+'"'+(fn?' style="cursor:pointer"':'')+'>'+
+      '<div class="kpi-label">'+l+'</div><div class="kpi-value">'+v+'</div>'+
+      '<div class="kpi-sub">'+s+'</div>'+hint+'</div>';
+    if(fn) setTimeout(function(){var n=document.getElementById(id);if(n)n.onclick=fn;},60);
+    return out;
+  }
+
+  // ── Drill-down functions (filter-aware) ────────────────────────────
+  function ddRevBU(){
+    var src = buFilter ? spots.filter(function(b){return b.bu===buFilter;}) : spots;
+    var sfx = isJan26?'_jan26':is2025?'_2025':null;
+    if(!sfx){ return ddHistorical('Revenue'); }
+    var rows=src.sort(function(a,b){return b['rev'+sfx]-a['rev'+sfx];}).map(function(b,i){
+      return {cells:[{v:i+1},{v:b.bu},{v:fV(b['rev'+sfx])},{v:fV(b['gp'+sfx])},
+        {v:b['rev'+sfx]>0?(b['gp'+sfx]/b['rev'+sfx]*100).toFixed(1)+'%':'—'},
+        {v:fV(b['ebitda'+sfx])},{v:b['ebitda_pct'+sfx].toFixed(1)+'%'}]};
+    });
+    var tot=src.reduce(function(s,b){return s+b['rev'+sfx];},0);
+    var totGP=src.reduce(function(s,b){return s+b['gp'+sfx];},0);
+    var totEB=src.reduce(function(s,b){return s+b['ebitda'+sfx];},0);
+    rows.push({_total:true,cells:[{v:''},{v:'TOTAL'},{v:fV(tot)},{v:fV(totGP)},
+      {v:tot>0?(totGP/tot*100).toFixed(1)+'%':'—'},{v:fV(totEB)},{v:tot>0?(totEB/tot*100).toFixed(1)+'%':'—'}]});
+    showDrillDown('💰','Revenue — '+periodLabel+(buFilter?' | '+buFilter:''),
+      'Group Revenue: $'+fM(rev)+'M · GP: $'+fM(gp)+'M · EBITDA: $'+fM(ebitda)+'M',
+      'SAP ERP — Management Accounts',rows,
+      [{label:'#'},{label:'BU'},{label:'Revenue',num:true},{label:'Gross Profit',num:true},
+       {label:'GP%',num:true},{label:'EBITDA',num:true},{label:'EBITDA%',num:true}]);
+  }
+  function ddHistorical(metric){
+    var rows=YR_LABELS.map(function(y,i){
+      var r=REV_ANN[i]||0,e=EBD_ANN[i]||0,g=r-(COGS_ANN[i]||0);
+      var active=y===activeYear;
+      return {cells:[{v:y,color:active?GOLD:''},{v:fV(r),color:active?GOLD:''},{v:fV(g)},
+        {v:r>0?(g/r*100).toFixed(1)+'%':''},{v:fV(e)},{v:r>0?(e/r*100).toFixed(1)+'%':''}]};
+    });
+    showDrillDown('📈','Historical '+metric+' — FY 2016 to Jan 2026',
+      'Selected: '+activeYear+' | '+metric+': $'+fM(metric==='Revenue'?rev:metric==='EBITDA'?ebitda:gp)+'M',
+      'SAP ERP — Annual Consolidation',rows,
+      [{label:'Year'},{label:'Revenue',num:true},{label:'Gross Profit',num:true},
+       {label:'GP%',num:true},{label:'EBITDA',num:true},{label:'EBITDA%',num:true}]);
+  }
+  function ddAR(){
+    var top=arCusts.slice().sort(function(a,b){return b.amount-a.amount;}).slice(0,25);
+    var rows=top.map(function(c,i){
+      var od=(+c.d91_120||0)+(+c.over120||0);
+      return {cells:[{v:i+1},{v:c.customer||'—'},{v:c.bu},
+        {v:fV(c.amount)},{v:fV(c.not_due||0)},{v:fV(c.d0_30||0)},{v:fV(c.d31_60||0)},{v:fV(c.d61_90||0)},
+        {v:fV(od),color:od>100000?RED:od>30000?GOLD:''}]};
+    });
+    var bkts=arBkts;
+    rows.unshift({_total:true,cells:[{v:'∑'},{v:'ALL '+arCusts.length+' CUSTOMERS'},{v:buFilter||'Group'},
+      {v:fV(arTotal)},{v:fV(bkts.not_due||arCusts.reduce(function(s,c){return s+(+c.not_due||0);},0))},
+      {v:fV(bkts.d0_30||arCusts.reduce(function(s,c){return s+(+c.d0_30||0);},0))},
+      {v:fV(bkts.d31_60||arCusts.reduce(function(s,c){return s+(+c.d31_60||0);},0))},
+      {v:fV(bkts.d61_90||arCusts.reduce(function(s,c){return s+(+c.d61_90||0);},0))},
+      {v:fV(arOD),color:RED}]});
+    showDrillDown('🧾','AR Outstanding — Ageing Detail'+(buFilter?' | '+buFilter:' | All BUs'),
+      'AR Total: $'+fM(arTotal)+'M · Overdue 90d+: $'+fM(arOD)+'M ('+arODPct+'%) · '+arCusts.length+' customers',
+      'SAP ERP — AR Ageing Report Jan 2026',rows,
+      [{label:'#'},{label:'Customer'},{label:'BU'},{label:'Total',num:true},
+       {label:'Not Due',num:true},{label:'0-30d',num:true},{label:'31-60d',num:true},{label:'61-90d',num:true},{label:'90d+ Overdue',num:true}]);
+  }
+  function ddAP(){
+    var top=apVends.slice().sort(function(a,b){return b.amount-a.amount;}).slice(0,25);
+    var rows=top.map(function(v,i){
+      var od=(+v.d90_120||0)+(+v.over121||0);
+      return {cells:[{v:i+1},{v:v.vendor||'—'},{v:v.bu},
+        {v:fV(v.amount)},{v:fV(v.future||0)},{v:fV(v.d0_30||0)},{v:fV(v.d31_60||0)},{v:fV(v.d61_90||0)},
+        {v:fV(od),color:od>50000?RED:''}]};
+    });
+    rows.unshift({_total:true,cells:[{v:'∑'},{v:'ALL '+apVends.length+' VENDORS'},{v:buFilter||'Group'},
+      {v:fV(apTotal)},{v:fV(apVends.reduce(function(s,v){return s+(+v.future||0);},0))},
+      {v:fV(apVends.reduce(function(s,v){return s+(+v.d0_30||0);},0))},
+      {v:fV(apVends.reduce(function(s,v){return s+(+v.d31_60||0);},0))},
+      {v:fV(apVends.reduce(function(s,v){return s+(+v.d61_90||0);},0))},
+      {v:fV(apVends.reduce(function(s,v){return s+(+v.d90_120||0)+(+v.over121||0);},0)),color:RED}]});
+    showDrillDown('📦','AP Outstanding — Ageing Detail'+(buFilter?' | '+buFilter:' | All BUs'),
+      'AP Total: $'+fM(apTotal)+'M · Net W/C: $'+fM(netWC)+'M · '+apVends.length+' vendors',
+      'SAP ERP — AP Ageing Report Jan 2026',rows,
+      [{label:'#'},{label:'Vendor'},{label:'BU'},{label:'Total',num:true},
+       {label:'Future',num:true},{label:'0-30d',num:true},{label:'31-60d',num:true},{label:'61-90d',num:true},{label:'90d+',num:true}]);
+  }
+  function ddCredit(){
+    var bl=fd.bank_limits||[];
+    var rows=bl.map(function(b,i){
+      return {cells:[{v:i+1},{v:b.bank||'—'},{v:b.entity||'—'},
+        {v:fV(b.limit||0)},{v:fV(b.used||0),color:(b.used||0)/(b.limit||1)>0.8?RED:''},
+        {v:fV(b.available||0),color:GREEN},{v:bt.limit>0?(b.used/b.limit*100).toFixed(0)+'%':'—'}]};
+    });
+    rows.push({_total:true,cells:[{v:''},{v:'TOTAL'},{v:''},
+      {v:fV(bt.limit||0)},{v:fV(bt.used||0),color:RED},{v:fV(bt.available||0),color:GREEN},{v:utilPct+'%'}]});
+    showDrillDown('🏦','Credit Facilities — Utilization by Bank','Total: $'+fM(bt.limit||0)+'M · Used: $'+fM(bt.used||0)+'M · Avail: $'+fM(bt.available||0)+'M',
+      'Bank Statements / Facilities Register',rows,
+      [{label:'#'},{label:'Bank'},{label:'Entity'},{label:'Limit',num:true},{label:'Utilized',num:true},{label:'Available',num:true},{label:'Util%',num:true}]);
+  }
+  function ddWC(){
+    var bkts=arBkts;
+    var apBkts=(ad.ap&&ad.ap.buckets)||{};
+    var buRows=buFilter?[
+      {_total:true,cells:[{v:'AR'},{v:'Accounts Receivable — '+buFilter},{v:fV(arTotal)},{v:''}]},
+      {cells:[{v:''},{v:'Overdue 90d+'},{v:fV(arOD),color:RED},{v:arODPct+'%',color:RED}]},
+      {_total:true,cells:[{v:'AP'},{v:'Accounts Payable — '+buFilter},{v:fV(apTotal)},{v:''}]},
+      {_total:true,cells:[{v:'NWC'},{v:'Net Working Capital'},{v:fV(netWC),color:netWC>=0?GREEN:RED},{v:''}]}
+    ]:[
+      {_total:true,cells:[{v:'AR'},{v:'Accounts Receivable — All BUs ('+arCusts.length+' customers)'},{v:fV(arTotal)},{v:''}]},
+      {cells:[{v:''},{v:'Not Due'},{v:fV(bkts.not_due||0)},{v:''}]},
+      {cells:[{v:''},{v:'0–30 Days'},{v:fV(bkts.d0_30||0)},{v:''}]},
+      {cells:[{v:''},{v:'31–60 Days'},{v:fV(bkts.d31_60||0)},{v:''}]},
+      {cells:[{v:''},{v:'61–90 Days'},{v:fV(bkts.d61_90||0)},{v:GOLD}]},
+      {cells:[{v:''},{v:'91–120 Days'},{v:fV(bkts.d91_120||0),color:RED},{v:'Overdue',color:RED}]},
+      {cells:[{v:''},{v:'120+ Days'},{v:fV(bkts.d120plus||0),color:RED},{v:'Critical',color:RED}]},
+      {_total:true,cells:[{v:'AP'},{v:'Accounts Payable — All BUs ('+apVends.length+' vendors)'},{v:fV(apTotal)},{v:''}]},
+      {cells:[{v:''},{v:'Future / Not Due'},{v:fV(apBkts.future||0)},{v:''}]},
+      {cells:[{v:''},{v:'0–30 Days'},{v:fV(apBkts.d0_30||0)},{v:''}]},
+      {cells:[{v:''},{v:'31–60 Days'},{v:fV(apBkts.d31_60||0)},{v:''}]},
+      {cells:[{v:''},{v:'61–90 Days'},{v:fV(apBkts.d61_90||0)},{v:GOLD}]},
+      {cells:[{v:''},{v:'90–120 Days'},{v:fV(apBkts.d90_120||0),color:RED},{v:'Overdue',color:RED}]},
+      {_total:true,cells:[{v:'NWC'},{v:'Net Working Capital (AR − AP)'},{v:fV(netWC),color:netWC>=0?GREEN:RED},{v:''}]}
+    ];
+    showDrillDown('💰','Working Capital — AR & AP Breakdown'+(buFilter?' | '+buFilter:''),
+      'AR: $'+fM(arTotal)+'M · AP: $'+fM(apTotal)+'M · NWC: $'+fM(netWC)+'M · AR Overdue 90d+: $'+fM(arOD)+'M',
+      'SAP ERP — AR/AP Ageing Jan 2026',buRows,
+      [{label:'Cat.'},{label:'Description'},{label:'Amount',num:true},{label:'Status'}]);
+  }
+  function ddCapex(){
+    var c2=(fpd.capex_bu||[]).filter(function(c){return c.fy2025>0||c.jan2026>0;}).sort(function(a,b){return b.fy2025-a.fy2025;});
+    var fil=buFilter?c2.filter(function(c){return c.bu===buFilter;}):c2;
+    var rows=fil.map(function(c,i){
+      return {cells:[{v:i+1},{v:c.bu},{v:fV(c.fy2025)},{v:fV(c.jan2026)},{v:fV(c.jan2026*12)+' est.'}]};
+    });
+    var t25=fil.reduce(function(s,c){return s+c.fy2025;},0);
+    var t26=fil.reduce(function(s,c){return s+c.jan2026;},0);
+    rows.push({_total:true,cells:[{v:''},{v:'TOTAL'},{v:fV(t25)},{v:fV(t26)},{v:fV(t26*12)+' est.'}]});
+    showDrillDown('🔧','CAPEX by Business Unit','FY 2025: $'+fM(t25)+'M · Jan 2026: $'+fM(t26)+'M · Run-rate: $'+fM(t26*12)+'M/yr',
+      'SAP ERP — Asset Register',rows,
+      [{label:'#'},{label:'BU'},{label:'FY 2025',num:true},{label:'Jan 2026',num:true},{label:'2026 Run-Rate',num:true}]);
+  }
+
+  // ── A: KPI Cards ────────────────────────────────────────────────────
+  var yrBadge = isJan26?'📅 2026 YTD — Jan 2026 Flash':is2025?'📊 FY 2025 — Full Year':'📆 FY '+activeYear+' — Historical';
+  var ytdDiv  = document.getElementById('es-ytd-kpis');
+  var banner  = document.getElementById('es-filter-banner');
+  if(banner) banner.innerHTML =
+    '<div style="background:linear-gradient(90deg,rgba(201,168,76,0.12),rgba(201,168,76,0.04));'+
+      'border:1px solid rgba(201,168,76,0.35);border-radius:8px;padding:9px 16px;'+
+      'display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">'+
+      '<span style="font-weight:700;color:#C9A84C;font-size:12.5px">'+yrBadge+
+        (buFilter?' &nbsp;|&nbsp; <span style="color:#1F2D5A">'+buFilter+'</span>':
+         ' &nbsp;|&nbsp; <span style="color:#888">All Business Units</span>')+'</span>'+
+      (runRate?'<span style="font-size:11px;color:#666">Annualized Run-Rate: <strong style="color:#1F2D5A;font-size:13px">$'+fM(runRate)+'M</strong></span>':
+               '<span style="font-size:11px;color:#888">Historical Annual Data</span>')+
+    '</div>';
+
+  if(ytdDiv){
+    var revGrwTxt = revGrw ? (parseFloat(revGrw)>=0?'▲ ':'▼ ')+Math.abs(parseFloat(revGrw))+'% vs prior year' : 'Historical';
+    var ebGrwTxt  = ebGrw  ? (parseFloat(ebGrw)>=0?'▲ ':'▼ ')+Math.abs(parseFloat(ebGrw))+'%  vs prior year' : '';
+    var cap25 = fpd.group_kpis.capex_2025||0, cap26=fpd.group_kpis.capex_jan26||0;
+    ytdDiv.innerHTML =
+      mkCard('Revenue',   '$'+fM(rev)+'M',   revGrwTxt+(runRate?' · Run-rate: $'+fM(runRate)+'M/yr':''), 'accent', ddRevBU)+
+      mkCard('Gross Profit','$'+fM(gp)+'M',  'GP Margin: '+gpPct+'%', 'green', function(){ddHistorical('Gross Profit');})+
+      mkCard('EBITDA',    '$'+fM(ebitda)+'M',  'Margin: '+ebPct+'%'+(ebGrwTxt?' · '+ebGrwTxt:''), 'green', function(){ddHistorical('EBITDA');})+
+      (hasBUData?
+        mkCard('AR Outstanding','$'+fM(arTotal)+'M',
+          arODPct+'% overdue 90d+ · '+arCusts.length+' customers','red',ddAR)+
+        mkCard('AP Outstanding','$'+fM(apTotal)+'M',
+          'Net W/C: $'+fM(netWC)+'M · '+apVends.length+' vendors','',ddAP)+
+        mkCard('Credit Headroom','$'+fM(bt.available||0)+'M',
+          utilPct+'% utilized of $'+fM(bt.limit||0)+'M','',ddCredit)
+      :
+        mkCard('CAPEX FY 2025','$'+fM(cap25)+'M','Capital expenditure full year','',ddCapex)+
+        mkCard('CAPEX Jan 2026','$'+fM(cap26)+'M','Jan run-rate: $'+fM(cap26*12)+'M/yr','',ddCapex)+
+        mkCard('5-yr CAGR',''+((yrIdx>=5&&REV_ANN[4]>0)?(Math.pow(rev/REV_ANN[4],1/5)-1)*100:0).toFixed(1)+'%','Revenue CAGR 2021→'+activeYear,'','')
+      );
+  }
+
+  // ── Working Capital KPIs ────────────────────────────────────────────
+  var wcDiv = document.getElementById('es-wc-kpis');
+  if(wcDiv){
+    var loans=(fd.loans||[]).filter(function(l){return l.name!=='Sub-Total';});
+    var loanBal=loans.reduce(function(a,l){return a+(l.balance||0);},0);
+    wcDiv.innerHTML =
+      mkCard('Total AR','$'+fM(arTotal)+'M',arCusts.length+' customers · '+arODPct+'% overdue 90d+','red',ddAR)+
+      mkCard('Total AP','$'+fM(apTotal)+'M',apVends.length+' vendors','',ddAP)+
+      mkCard('Net Working Capital','$'+fM(netWC)+'M','AR − AP'+(arOD>0?' · Overdue: $'+fM(arOD)+'M':''),netWC>=0?'green':'red',ddWC)+
+      mkCard('Credit Limit','$'+fM(bt.limit||0)+'M',utilPct+'% utilized','accent',ddCredit)+
+      mkCard('Credit Available','$'+fM(bt.available||0)+'M','Headroom across all banks','green',ddCredit)+
+      mkCard('CAPEX Jan 2026','$'+fM(fpd.group_kpis.capex_jan26||0)+'M','Run-rate: $'+fM((fpd.group_kpis.capex_jan26||0)*12)+'M/yr','',ddCapex);
+  }
+
+  // ── Charts ──────────────────────────────────────────────────────────
+  var colors8=['#1F2D5A','#C9A84C','#CC3300','#1A6B3C','#4e7bd4','#e07b39','#6c757d','#a855f7','#0ea5e9','#d97706'];
+
+  // B: Revenue + EBITDA trend (highlight selected year)
+  destroyChart('es-rev-trend');
+  makeChart('es-rev-trend',{type:'bar',data:{labels:YR_LABELS,datasets:[
+    {label:'Revenue $M',data:REV_ANN.map(function(v){return +(v/1e6).toFixed(2);}),
+     backgroundColor:YR_LABELS.map(function(y){return y===activeYear?'rgba(201,168,76,0.95)':'rgba(31,45,90,0.78)';}),
+     borderRadius:3,order:2},
+    {label:'EBITDA $M',data:EBD_ANN.map(function(v){return +(v/1e6).toFixed(2);}),
+     type:'line',borderColor:GREEN,backgroundColor:'rgba(26,107,60,0.08)',
+     pointBackgroundColor:YR_LABELS.map(function(y){return y===activeYear?'#FF6B00':GREEN;}),
+     pointRadius:YR_LABELS.map(function(y){return y===activeYear?6:3;}),
+     borderWidth:2.5,fill:false,tension:0.3,order:1}
+  ]},options:{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{position:'bottom',labels:{font:{size:10}}}},
+    scales:{x:ax(),y:{...ax(),ticks:{...ax().ticks,callback:function(v){return '$'+v.toFixed(0)+'M';}}}}}});
+
+  // B: YoY Growth
+  destroyChart('es-yoy-growth');
+  var yoy=REV_ANN.map(function(v,i){return i===0?0:+((v-REV_ANN[i-1])/REV_ANN[i-1]*100).toFixed(1);});
+  makeChart('es-yoy-growth',{type:'bar',data:{labels:YR_LABELS,datasets:[{
+    label:'YoY Revenue Growth %',data:yoy,
+    backgroundColor:YR_LABELS.map(function(y,i){
+      return y===activeYear?'rgba(201,168,76,0.95)':yoy[i]>=0?'rgba(26,107,60,0.65)':'rgba(204,0,0,0.65)';
+    }),borderRadius:4
+  }]},options:{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){return ctx.parsed.y.toFixed(1)+'%';}}}},
+    scales:{x:ax(),y:{...ax(),ticks:{...ax().ticks,callback:function(v){return v+'%';}}}}}});
+
+  // C: BU bar (period-aware)
+  destroyChart('es-bu-bar26');
+  destroyChart('es-bu-donut26');
+  var sfxBU = isJan26?'_jan26':is2025?'_2025':null;
+  var titleEl1=document.getElementById('es-bu-bar-title');
+  var titleEl2=document.getElementById('es-bu-donut-title');
+  if(sfxBU){
+    var activeSrc = buFilter
+      ? spots.filter(function(b){return b.bu===buFilter;})
+      : spots.filter(function(b){return b['rev'+sfxBU]>0;});
+    var bSorted=activeSrc.slice().sort(function(a,b){return b['rev'+sfxBU]-a['rev'+sfxBU];});
+    if(titleEl1) titleEl1.textContent='Revenue & EBITDA by BU — '+(isJan26?'Jan 2026':'FY 2025')+(buFilter?' | '+buFilter:'');
+    if(titleEl2) titleEl2.textContent='Revenue Share — '+(isJan26?'Jan 2026':'FY 2025')+(buFilter?' | '+buFilter:'');
+    makeChart('es-bu-bar26',{type:'bar',data:{labels:bSorted.map(function(b){return b.bu;}),datasets:[
+      {label:'Revenue',data:bSorted.map(function(b){return +(b['rev'+sfxBU]/1e6).toFixed(3);}),backgroundColor:'rgba(31,45,90,0.82)',borderRadius:4},
+      {label:'EBITDA', data:bSorted.map(function(b){return +(b['ebitda'+sfxBU]/1e6).toFixed(3);}),
+       backgroundColor:bSorted.map(function(b){return b['ebitda'+sfxBU]>=0?'rgba(201,168,76,0.85)':'rgba(204,0,0,0.75)';}),borderRadius:4}
+    ]},options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom',labels:{font:{size:10}}}},
+      scales:{x:{...ax(),ticks:{...ax().ticks,maxRotation:35,font:{size:9}}},
+        y:{...ax(),ticks:{...ax().ticks,callback:function(v){return '$'+v.toFixed(2)+'M';}}}}}});
+    var bPos=bSorted.filter(function(b){return b['rev'+sfxBU]>0;});
+    makeChart('es-bu-donut26',{type:'doughnut',data:{
+      labels:bPos.map(function(b){return b.bu;}),
+      datasets:[{data:bPos.map(function(b){return +(b['rev'+sfxBU]/1e6).toFixed(3);}),
+        backgroundColor:bPos.map(function(_,i){return colors8[i%colors8.length];}),borderWidth:2,borderColor:'#fff'}]
+    },options:{responsive:true,maintainAspectRatio:false,cutout:'52%',
+      plugins:{legend:{position:'right',labels:{font:{size:9},boxWidth:10}},
+        tooltip:{callbacks:{label:function(ctx){return ctx.label+': $'+ctx.parsed.toFixed(2)+'M';}}}}}});
+  } else {
+    // Historical — show annual revenue per year as bar, no BU breakdown
+    if(titleEl1) titleEl1.textContent='Annual Revenue — '+activeYear+' highlighted';
+    if(titleEl2) titleEl2.textContent='Revenue vs EBITDA — '+activeYear;
+    makeChart('es-bu-bar26',{type:'bar',data:{labels:YR_LABELS,datasets:[
+      {label:'Revenue $M',data:REV_ANN.map(function(v){return +(v/1e6).toFixed(2);}),
+       backgroundColor:YR_LABELS.map(function(y){return y===activeYear?GOLD:'rgba(31,45,90,0.75)';}),borderRadius:4}
+    ]},options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{x:{...ax(),ticks:{...ax().ticks,maxRotation:35,font:{size:9}}},
+        y:{...ax(),ticks:{...ax().ticks,callback:function(v){return '$'+v.toFixed(0)+'M';}}}}}});
+    makeChart('es-bu-donut26',{type:'bar',data:{labels:YR_LABELS,datasets:[
+      {label:'EBITDA $M',data:EBD_ANN.map(function(v){return +(v/1e6).toFixed(2);}),
+       backgroundColor:YR_LABELS.map(function(y){return y===activeYear?GREEN:'rgba(26,107,60,0.55)';}),borderRadius:4}
+    ]},options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{x:ax(),y:{...ax(),ticks:{...ax().ticks,callback:function(v){return '$'+v.toFixed(0)+'M';}}}}}});
+  }
+
+  // D: EBITDA margin by BU
+  destroyChart('es-ebitda-bu-margin');
+  var bMargin=(fpd.bu_spotlight||[]).filter(function(b){
+    return b.bu!=='TOTAL CoGS'&&b.bu!=='Sub-Total'&&b.bu!=='TOTAL'&&
+           (b.ebitda_pct_2025!==0||b.ebitda_pct_jan26!==0)&&
+           (!buFilter||b.bu===buFilter);
+  }).sort(function(a,b){return b.ebitda_pct_2025-a.ebitda_pct_2025;});
+  makeChart('es-ebitda-bu-margin',{type:'bar',data:{labels:bMargin.map(function(b){return b.bu;}),datasets:[
+    {label:'FY 2025 EBITDA%',data:bMargin.map(function(b){return +b.ebitda_pct_2025;}),backgroundColor:'rgba(31,45,90,0.75)',borderRadius:4},
+    {label:'Jan 2026 EBITDA%',data:bMargin.map(function(b){return +b.ebitda_pct_jan26;}),
+     backgroundColor:bMargin.map(function(b){return b.ebitda_pct_jan26>=0?'rgba(201,168,76,0.85)':'rgba(204,0,0,0.7)';}),borderRadius:4}
+  ]},options:{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{position:'bottom',labels:{font:{size:10}}}},
+    scales:{x:{...ax(),ticks:{...ax().ticks,maxRotation:35,font:{size:9}}},
+      y:{...ax(),ticks:{...ax().ticks,callback:function(v){return v.toFixed(0)+'%';}}}}}});
+
+  // D: Margin trend
+  destroyChart('es-margin-trend-new');
+  var gpPctArr=REV_ANN.map(function(r,i){return r>0?(r-(COGS_ANN[i]||0))/r*100:0;});
+  var ebPctArr=REV_ANN.map(function(r,i){return r>0?EBD_ANN[i]/r*100:0;});
+  makeChart('es-margin-trend-new',{type:'line',data:{labels:YR_LABELS,datasets:[
+    {label:'GP %',    data:gpPctArr.map(function(v){return +v.toFixed(1);}),borderColor:GOLD,backgroundColor:'rgba(201,168,76,0.10)',borderWidth:2.5,tension:0.3,pointRadius:3,fill:false},
+    {label:'EBITDA %',data:ebPctArr.map(function(v){return +v.toFixed(1);}),borderColor:GREEN,backgroundColor:'rgba(26,107,60,0.08)',borderWidth:2.5,tension:0.3,pointRadius:3,fill:false}
+  ]},options:{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{position:'bottom',labels:{font:{size:10}}}},
+    scales:{x:ax(),y:{...ax(),ticks:{...ax().ticks,callback:function(v){return v.toFixed(0)+'%';}}}}}});
+
+  // E: Facilities & CAPEX charts
+  destroyChart('es-fac-chart');
+  var bl=fd.bank_limits||[];
+  makeChart('es-fac-chart',{type:'bar',data:{labels:bl.map(function(b){return b.bank+'\n'+b.entity;}),datasets:[
+    {label:'Utilized', data:bl.map(function(b){return +(b.used/1e6).toFixed(2);}),backgroundColor:'rgba(204,0,0,0.70)',borderRadius:3},
+    {label:'Available',data:bl.map(function(b){return +(b.available/1e6).toFixed(2);}),backgroundColor:'rgba(26,107,60,0.60)',borderRadius:3}
+  ]},options:{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{position:'bottom',labels:{font:{size:10}}}},
+    scales:{x:{...ax(),stacked:true,ticks:{...ax().ticks,maxRotation:40,font:{size:9}}},
+      y:{...ax(),stacked:true,ticks:{...ax().ticks,callback:function(v){return '$'+v.toFixed(1)+'M';}}}}}});
+
+  destroyChart('es-capex-chart');
+  var capexBU=(fpd.capex_bu||[]).filter(function(c){
+    return (c.fy2025>0||c.jan2026>0)&&(!buFilter||c.bu===buFilter);
+  }).sort(function(a,b){return b.fy2025-a.fy2025;});
+  makeChart('es-capex-chart',{type:'bar',data:{labels:capexBU.map(function(c){return c.bu;}),datasets:[
+    {label:'FY 2025', data:capexBU.map(function(c){return +(c.fy2025/1e6).toFixed(3);}),backgroundColor:'rgba(31,45,90,0.82)',borderRadius:4},
+    {label:'Jan 2026',data:capexBU.map(function(c){return +(c.jan2026/1e6).toFixed(3);}),backgroundColor:'rgba(201,168,76,0.85)',borderRadius:4}
+  ]},options:{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{position:'bottom',labels:{font:{size:10}}}},
+    scales:{x:{...ax(),ticks:{...ax().ticks,maxRotation:35,font:{size:9}}},
+      y:{...ax(),ticks:{...ax().ticks,callback:function(v){return '$'+v.toFixed(2)+'M';}}}}}});
+
+  // F: Executive Signals
+  var alertsDiv=document.getElementById('es-alerts');
+  if(alertsDiv){
+    var rev25kpi=fpd.group_kpis.rev_2025||0;
+    var mkSig=function(icon,title,body,color,fn){
+      var id='esig_'+Math.random().toString(36).slice(2,8);
+      var hint=fn?'<div style="font-size:9px;color:#aaa;margin-top:4px">🔍 Click for detail</div>':'';
+      var el='<div id="'+id+'" style="background:#fff;border:1px solid #e5e7eb;border-left:4px solid '+color+
+        ';border-radius:8px;padding:14px 16px;'+(fn?'cursor:pointer;':'')+'">' +
+        '<div style="font-weight:700;font-size:12.5px;color:#1F2D5A;margin-bottom:5px">'+icon+' '+title+'</div>'+
+        '<div style="font-size:11.5px;color:#555;line-height:1.6">'+body+'</div>'+hint+'</div>';
+      if(fn) setTimeout(function(){var n=document.getElementById(id);if(n)n.onclick=fn;},80);
+      return el;
+    };
+    var sigs=[];
+    // Top BU
+    if(sfxBU){
+      var topBU=(buFilter?spots.filter(function(b){return b.bu===buFilter;}):spots)
+        .filter(function(b){return b['rev'+sfxBU]>0;}).sort(function(a,b){return b['rev'+sfxBU]-a['rev'+sfxBU];})[0];
+      if(topBU) sigs.push(mkSig('🏆','Top Business Unit — '+(isJan26?'Jan 2026':'FY 2025'),
+        '<strong>'+topBU.bu+'</strong>: Revenue <strong>$'+fM(topBU['rev'+sfxBU])+'M</strong> · EBITDA $'+fM(topBU['ebitda'+sfxBU])+'M ('+topBU['ebitda_pct'+sfxBU].toFixed(1)+'% margin).',GOLD,ddRevBU));
+    }
+    // Run-rate
+    if(isJan26){
+      var rrPct=rev25kpi>0?(runRate/rev25kpi*100).toFixed(0):0;
+      sigs.push(mkSig('📈','FY 2026 Revenue Run-Rate',
+        'Jan 2026 annualized: <strong>$'+fM(runRate)+'M</strong> = <strong>'+rrPct+'%</strong> of FY 2025 ($'+fM(rev25kpi)+'M). '+
+        (runRate>=rev25kpi?'On track to exceed prior year.':'Early in year — monitor closely.'),
+        runRate>=rev25kpi?GREEN:GOLD,ddRevBU));
+    }
+    // AR
+    if(hasBUData){
+      sigs.push(mkSig(arOD>5e6?'🔴':'🟡','AR Collection Risk'+(buFilter?' — '+buFilter:''),
+        'Total AR: <strong>$'+fM(arTotal)+'M</strong> · '+arCusts.length+' customers · Overdue 90d+: <strong>$'+fM(arOD)+'M ('+arODPct+'%)</strong>. '+
+        (arOD>5e6?'High overdue — collection escalation needed.':arOD>2e6?'Moderate overdue — monitor.':'Within range.'),
+        arOD>5e6?RED:GOLD,ddAR));
+      // Working capital
+      sigs.push(mkSig(netWC>0?'🟢':'🔴','Net Working Capital'+(buFilter?' — '+buFilter:''),
+        'Net W/C: <strong>$'+fM(netWC)+'M</strong> (AR $'+fM(arTotal)+'M − AP $'+fM(apTotal)+'M). '+
+        (netWC>0?'Positive — healthy liquidity.':'Negative — accelerate AR collection.'),
+        netWC>0?GREEN:RED,ddWC));
+    }
+    // EBITDA margin
+    var ebN=parseFloat(ebPct), ebN25=rev25kpi>0?(fpd.group_kpis.ebitda_2025/rev25kpi*100):0;
+    sigs.push(mkSig(ebN>=25?'🟢':ebN>=15?'🟡':'🔴','EBITDA Margin — '+activeYear+(buFilter?' | '+buFilter:''),
+      'EBITDA margin: <strong>'+ebPct+'%</strong>'+(is2025||isJan26?' vs prior year ~'+ebN25.toFixed(1)+'%':'')+'. '+
+      (ebN>=25?'Strong profitability.':ebN>=15?'Acceptable — room for improvement.':'Below target — cost review needed.'),
+      ebN>=25?GREEN:ebN>=15?GOLD:RED));
+    // Credit
+    var uN=parseInt(utilPct);
+    sigs.push(mkSig(uN>80?'🔴':uN>60?'🟡':'🟢','Credit Utilization',
+      utilPct+'% utilized of $'+fM(bt.limit||0)+'M. Headroom: <strong>$'+fM(bt.available||0)+'M</strong>. '+
+      (uN>80?'High — consider refinancing.':uN>60?'Moderate.':'Comfortable.'),
+      uN>80?RED:uN>60?GOLD:GREEN,ddCredit));
+    alertsDiv.innerHTML=sigs.join('');
+  }
+
+  console.log('[S29] refreshExecTab: year='+activeYear+' bu='+(buFilter||'all')+' rev=$'+fM(rev)+'M ar=$'+fM(arTotal)+'M ap=$'+fM(apTotal)+'M');
+};
+
+// Register nav-label rename
+document.querySelectorAll('.nav-item').forEach(function(el){
+  if(el.getAttribute('onclick')&&el.getAttribute('onclick').indexOf("'overview'")>=0){
+    el.childNodes.forEach(function(n){if(n.nodeType===3&&n.textContent.trim()) n.textContent='Executive Summary';});
+  }
+});
+if(typeof pageTitles==='object') pageTitles['overview']='Executive Summary — Al Majal Group';
+
+})();
+// END Section 29
+
+// ══════════════════════════════════════════════════════════════════════
+// SECTION 30 — EXEC SUMMARY: remove duplicate banner + fix AR/AP period
+// ══════════════════════════════════════════════════════════════════════
+(function(){
+'use strict';
+
+var NAVY='#1F2D5A', GOLD='#C9A84C', GREEN='#1A6B3C', RED='#CC3300';
+function fM(n){ return fmtM(n||0); }
+function fV(n){
+  if(!n&&n!==0) return '$0';
+  var a=Math.abs(n);
+  if(a>=1e6) return (n<0?'-':'')+'$'+(a/1e6).toFixed(2)+'M';
+  if(a>=1e3) return (n<0?'-':'')+'$'+(a/1e3).toFixed(1)+'K';
+  return (n<0?'-':'')+'$'+a.toFixed(0);
+}
+function destroyChart(id){
+  try{ var c=window.Chart&&Chart.getChart?Chart.getChart(id):null; if(c)c.destroy(); }catch(e){}
+}
+function ax(){ return {ticks:{color:'#555',font:{size:10}},grid:{color:'rgba(0,0,0,0.05)'}}; }
+
+var REV_ANN  = FP_DATA.rev_annual    || [];
+var EBD_ANN  = FP_DATA.ebitda_annual || [];
+var COGS_ANN = FP_DATA.cogs_annual   || [];
+var YR_LABELS= FP_DATA.year_labels   || [];
+var ALL_BUS  = (FP_DATA.bu_spotlight||[])
+  .filter(function(b){return b.bu!=='TOTAL CoGS'&&b.bu!=='Sub-Total'&&b.bu!=='TOTAL';})
+  .map(function(b){return b.bu;});
+
+var activeYear = 'Jan 2026';
+var activeBU   = 'all';
+
+// ══════════════════════════════════════════════════════════════════════
+// Override initOverview — builds HTML once (with filter bar, NO banner)
+// ══════════════════════════════════════════════════════════════════════
+window.initOverview = function(){
+  window.initOverviewExtension = function(){};
+  var cont = document.getElementById('page-overview');
+  if(!cont) return;
+
+  var yrOpts = YR_LABELS.slice().reverse().map(function(y){
+    return '<option value="'+y+'"'+(y==='Jan 2026'?' selected':'')+'>'+
+      (y==='Jan 2026'?'Jan 2026 — 2026 YTD':y==='2025'?'FY 2025':'FY '+y)+'</option>';
+  }).join('');
+  var buOpts = '<option value="all">All Business Units</option>'+
+    ALL_BUS.map(function(b){return '<option value="'+b+'">'+b+'</option>';}).join('');
+  var sel = 'background:#fff;border:1px solid rgba(201,168,76,0.5);border-radius:6px;'+
+    'padding:6px 10px;font-size:12px;color:#1F2D5A;font-weight:600;cursor:pointer;outline:none;min-width:150px';
+
+  cont.innerHTML =
+    // ── Masthead with embedded filter bar ────────────────────────────
+    '<div style="background:linear-gradient(135deg,#1F2D5A 0%,#2C3E6B 100%);border-radius:10px;padding:16px 22px;margin-bottom:14px">'+
+      '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">'+
+        '<div>'+
+          '<div style="color:#C9A84C;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px">Al Majal Group</div>'+
+          '<div style="color:#fff;font-size:20px;font-weight:800">Executive Summary</div>'+
+          '<div style="color:rgba(255,255,255,0.5);font-size:11px;margin-top:2px">Consolidated Group Performance &nbsp;|&nbsp; FY 2016 – Jan 2026 &nbsp;|&nbsp; All figures USD</div>'+
+        '</div>'+
+        '<div style="background:rgba(201,168,76,0.18);border:1px solid rgba(201,168,76,0.4);border-radius:8px;padding:4px 12px;color:#C9A84C;font-size:10px;font-weight:700">CONFIDENTIAL</div>'+
+      '</div>'+
+      // Filter bar — single row, no duplicate label below
+      '<div style="margin-top:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+
+        '<span style="color:rgba(255,255,255,0.65);font-size:11px;font-weight:600">📅 Period:</span>'+
+        '<select id="es-yr-sel" style="'+sel+'">'+yrOpts+'</select>'+
+        '<span style="color:rgba(255,255,255,0.65);font-size:11px;font-weight:600;margin-left:6px">🏢 Business Unit:</span>'+
+        '<select id="es-bu-sel" style="'+sel+'">'+buOpts+'</select>'+
+        '<button onclick="window.refreshExecTab()" style="background:#C9A84C;color:#1F2D5A;border:none;border-radius:6px;padding:7px 16px;font-size:12px;font-weight:700;cursor:pointer;margin-left:4px">🔄 Apply</button>'+
+        '<span id="es-active-badge" style="margin-left:auto;background:rgba(201,168,76,0.2);border:1px solid rgba(201,168,76,0.4);border-radius:20px;padding:3px 12px;color:#C9A84C;font-size:10px;font-weight:600"></span>'+
+      '</div>'+
+    '</div>'+
+
+    // ── KPI scorecard (no banner div — filter bar above is enough) ──
+    '<div class="kpi-grid" id="es-ytd-kpis" style="margin-bottom:16px"></div>'+
+
+    // ── Row 1: Historical Trend ───────────────────────────────────────
+    '<div id="es-lbl-trend" style="font-size:11.5px;font-weight:700;color:'+NAVY+';padding:7px 12px;background:rgba(31,45,90,0.07);border-left:4px solid '+NAVY+';border-radius:4px;margin:4px 0 10px">'+
+      '📈 &nbsp;Historical Performance Trend — FY 2016 to Jan 2026</div>'+
+    '<div class="chart-row cols-2">'+
+      '<div class="chart-box"><div class="chart-title"><span></span>Revenue & EBITDA — Full History</div><div class="chart-container h280"><canvas id="es-rev-trend"></canvas></div></div>'+
+      '<div class="chart-box"><div class="chart-title"><span></span>Year-on-Year Revenue Growth %</div><div class="chart-container h280"><canvas id="es-yoy-growth"></canvas></div></div>'+
+    '</div>'+
+
+    // ── Row 2: BU Performance ─────────────────────────────────────────
+    '<div id="es-lbl-bu" style="font-size:11.5px;font-weight:700;color:'+NAVY+';padding:7px 12px;background:rgba(31,45,90,0.07);border-left:4px solid '+NAVY+';border-radius:4px;margin:18px 0 10px">'+
+      '🏢 &nbsp;Business Unit Performance</div>'+
+    '<div class="chart-row cols-2">'+
+      '<div class="chart-box"><div class="chart-title"><span></span><span id="es-bu-bar-lbl">Revenue & EBITDA by Business Unit</span></div><div class="chart-container h300"><canvas id="es-bu-bar26"></canvas></div></div>'+
+      '<div class="chart-box"><div class="chart-title"><span></span><span id="es-bu-donut-lbl">Revenue Contribution by BU</span></div><div class="chart-container h300"><canvas id="es-bu-donut26"></canvas></div></div>'+
+    '</div>'+
+
+    // ── Row 3: Profitability ──────────────────────────────────────────
+    '<div style="font-size:11.5px;font-weight:700;color:'+NAVY+';padding:7px 12px;background:rgba(31,45,90,0.07);border-left:4px solid '+NAVY+';border-radius:4px;margin:18px 0 10px">'+
+      '📊 &nbsp;Profitability & Margin Analysis</div>'+
+    '<div class="chart-row cols-2">'+
+      '<div class="chart-box"><div class="chart-title"><span></span>EBITDA Margin % by BU — FY 2025 vs Jan 2026</div><div class="chart-container h280"><canvas id="es-ebitda-bu-margin"></canvas></div></div>'+
+      '<div class="chart-box"><div class="chart-title"><span></span>GP% & EBITDA% — Historical Trend</div><div class="chart-container h280"><canvas id="es-margin-trend-new"></canvas></div></div>'+
+    '</div>'+
+
+    // ── Row 4: Working Capital (Jan 2026 only — gated in JS) ──────────
+    '<div id="es-lbl-wc" style="font-size:11.5px;font-weight:700;color:'+NAVY+';padding:7px 12px;background:rgba(31,45,90,0.07);border-left:4px solid '+NAVY+';border-radius:4px;margin:18px 0 10px">'+
+      '💰 &nbsp;Working Capital & Credit Facilities</div>'+
+    '<div class="kpi-grid" id="es-wc-kpis" style="margin-bottom:12px"></div>'+
+    '<div class="chart-row cols-2" id="es-fac-row">'+
+      '<div class="chart-box"><div class="chart-title"><span></span>Credit Facilities — Utilized vs Available</div><div class="chart-container h220"><canvas id="es-fac-chart"></canvas></div></div>'+
+      '<div class="chart-box"><div class="chart-title"><span></span>CAPEX by Business Unit — FY 2025 vs Jan 2026</div><div class="chart-container h220"><canvas id="es-capex-chart"></canvas></div></div>'+
+    '</div>'+
+
+    // ── Row 5: Signals ────────────────────────────────────────────────
+    '<div style="font-size:11.5px;font-weight:700;color:'+NAVY+';padding:7px 12px;background:rgba(31,45,90,0.07);border-left:4px solid '+NAVY+';border-radius:4px;margin:18px 0 10px">'+
+      '⚡ &nbsp;Executive Signals & Insights</div>'+
+    '<div id="es-alerts" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-bottom:32px"></div>';
+
+  // Attach listeners
+  var yrSel=document.getElementById('es-yr-sel');
+  var buSel=document.getElementById('es-bu-sel');
+  if(yrSel) yrSel.addEventListener('change',function(){
+    activeYear=this.value;
+    var hasBU=(activeYear==='2025'||activeYear==='Jan 2026');
+    if(buSel){buSel.disabled=!hasBU;if(!hasBU){buSel.value='all';activeBU='all';}}
+    window.refreshExecTab();
+  });
+  if(buSel) buSel.addEventListener('change',function(){
+    activeBU=this.value;
+    window.refreshExecTab();
+  });
+
+  window.refreshExecTab();
+};
+
+// ══════════════════════════════════════════════════════════════════════
+// REFRESH — rebuilds KPIs + charts from active filters
+// ══════════════════════════════════════════════════════════════════════
+window.refreshExecTab = function(){
+  var fpd=FP_DATA, ad=AGEING_DATA, fd=FAC_DATA;
+  var yrSel=document.getElementById('es-yr-sel');
+  var buSel=document.getElementById('es-bu-sel');
+  activeYear = yrSel ? yrSel.value : activeYear;
+  activeBU   = buSel ? buSel.value : activeBU;
+
+  var isJan26 = (activeYear==='Jan 2026');
+  var is2025  = (activeYear==='2025');
+  var hasBUData = (isJan26||is2025);       // BU charts available
+  var showARAP  = isJan26;                  // AR/AP ageing only Jan 2026
+  var buFilter  = (hasBUData&&activeBU!=='all') ? activeBU : null;
+
+  if(buSel) buSel.disabled=!hasBUData;
+
+  // ── Update active badge (single place — no duplicate below) ─────────
+  var badge=document.getElementById('es-active-badge');
+  if(badge) badge.textContent=(isJan26?'Jan 2026 — YTD':is2025?'FY 2025':'FY '+activeYear)+
+    (buFilter?' | '+buFilter:' | All BUs');
+
+  // ── Period metrics ───────────────────────────────────────────────────
+  var yrIdx=YR_LABELS.indexOf(activeYear);
+  var spots=(fpd.bu_spotlight||[]).filter(function(b){
+    return b.bu!=='TOTAL CoGS'&&b.bu!=='Sub-Total'&&b.bu!=='TOTAL';
+  });
+  var rev,ebitda,gp,capex,gpPct,ebPct;
+  if(buFilter){
+    var bd=spots.filter(function(b){return b.bu===buFilter;})[0]||{};
+    var sfx=isJan26?'_jan26':'_2025';
+    rev=bd['rev'+sfx]||0; ebitda=bd['ebitda'+sfx]||0; gp=bd['gp'+sfx]||0; capex=bd['capex'+sfx]||0;
+  } else if(isJan26){
+    rev=fpd.group_kpis.rev_jan26||0; ebitda=fpd.group_kpis.ebitda_jan26||0;
+    gp=fpd.group_kpis.gp_jan26||0;  capex=fpd.group_kpis.capex_jan26||0;
+  } else if(is2025){
+    rev=fpd.group_kpis.rev_2025||0; ebitda=fpd.group_kpis.ebitda_2025||0;
+    gp=fpd.group_kpis.gp_2025||0;  capex=fpd.group_kpis.capex_2025||0;
+  } else {
+    rev=yrIdx>=0?REV_ANN[yrIdx]||0:0; ebitda=yrIdx>=0?EBD_ANN[yrIdx]||0:0;
+    gp=rev-(yrIdx>=0?COGS_ANN[yrIdx]||0:0); capex=0;
+  }
+  gpPct=rev>0?(gp/rev*100).toFixed(1):'0.0';
+  ebPct=rev>0?(ebitda/rev*100).toFixed(1):'0.0';
+
+  // Prior-year comparison
+  var priorRev=0,priorEB=0;
+  if(isJan26){priorRev=fpd.group_kpis.rev_2025||0;priorEB=fpd.group_kpis.ebitda_2025||0;}
+  else if(yrIdx>0){priorRev=REV_ANN[yrIdx-1]||0;priorEB=EBD_ANN[yrIdx-1]||0;}
+  var revGrw=priorRev>0?((rev-priorRev)/priorRev*100).toFixed(1):null;
+  var runRate=isJan26?rev*12:null;
+
+  // ── AR/AP — ONLY for Jan 2026 ────────────────────────────────────────
+  var arCusts=(ad.ar&&ad.ar.customers)||[];
+  var apVends=(ad.ap&&ad.ap.vendors)||[];
+  var arTotal=0,apTotal=0,netWC=0,arOD=0,arODPct='0.0';
+  if(showARAP){
+    var filtAR = buFilter ? arCusts.filter(function(c){return (c.bu||'').trim()===buFilter.trim();}) : arCusts;
+    var filtAP = buFilter ? apVends.filter(function(v){return (v.bu||'').trim()===buFilter.trim();}) : apVends;
+    arTotal = buFilter
+      ? filtAR.reduce(function(s,c){return s+(+c.amount||0);},0)
+      : (ad.ar&&ad.ar.total)||arCusts.reduce(function(s,c){return s+(+c.amount||0);},0);
+    apTotal = buFilter
+      ? filtAP.reduce(function(s,v){return s+(+v.amount||0);},0)
+      : (ad.ap&&ad.ap.total)||apVends.reduce(function(s,v){return s+(+v.amount||0);},0);
+    netWC   = arTotal-apTotal;
+    var arBkts=((!buFilter)&&ad.ar&&ad.ar.buckets)||{};
+    arOD    = buFilter
+      ? filtAR.reduce(function(s,c){return s+(+c.d91_120||0)+(+c.over120||0);},0)
+      : (arBkts.d91_120||0)+(arBkts.d120plus||0);
+    arODPct = arTotal>0?(arOD/arTotal*100).toFixed(1):'0.0';
+    arCusts = filtAR; apVends = filtAP;
+  }
+
+  var bt=fd.bank_totals||{};
+  var utilPct=bt.limit>0?(bt.used/bt.limit*100).toFixed(0):'0';
+  var loans=(fd.loans||[]).filter(function(l){return l.name!=='Sub-Total';});
+  var loanBal=loans.reduce(function(a,l){return a+(l.balance||0);},0);
+  var cap25=fpd.group_kpis.capex_2025||0, cap26=fpd.group_kpis.capex_jan26||0;
+
+  // ── Clickable card helper ────────────────────────────────────────────
+  function mkCard(l,v,s,c,fn){
+    var id='ec'+Math.random().toString(36).slice(2,8);
+    var hint=fn?'<div style="font-size:9px;color:rgba(255,255,255,0.4);margin-top:3px">🔍 Detail</div>':'';
+    var out='<div class="kpi-card '+c+'" id="'+id+'"'+(fn?' style="cursor:pointer"':'')+'>'+
+      '<div class="kpi-label">'+l+'</div><div class="kpi-value">'+v+'</div>'+
+      '<div class="kpi-sub">'+s+'</div>'+hint+'</div>';
+    if(fn) setTimeout(function(){var n=document.getElementById(id);if(n)n.onclick=fn;},60);
+    return out;
+  }
+
+  // ── Drill-down helpers (period + BU aware) ───────────────────────────
+  function ddRevenue(){
+    var sfx=isJan26?'_jan26':is2025?'_2025':null;
+    if(!sfx) return ddHistAll('Revenue');
+    var src=buFilter?spots.filter(function(b){return b.bu===buFilter;}):spots;
+    var rows=src.slice().sort(function(a,b){return b['rev'+sfx]-a['rev'+sfx];}).map(function(b,i){
+      return {cells:[{v:i+1},{v:b.bu},{v:fV(b['rev'+sfx])},{v:fV(b['gp'+sfx])},
+        {v:b['rev'+sfx]>0?(b['gp'+sfx]/b['rev'+sfx]*100).toFixed(1)+'%':'—'},
+        {v:fV(b['ebitda'+sfx])},{v:b['ebitda_pct'+sfx].toFixed(1)+'%'}]};
+    });
+    var tot=src.reduce(function(s,b){return s+b['rev'+sfx];},0);
+    var totGP=src.reduce(function(s,b){return s+b['gp'+sfx];},0);
+    var totEB=src.reduce(function(s,b){return s+b['ebitda'+sfx];},0);
+    rows.push({_total:true,cells:[{v:''},{v:'GROUP TOTAL'},{v:fV(tot)},{v:fV(totGP)},
+      {v:tot>0?(totGP/tot*100).toFixed(1)+'%':'—'},{v:fV(totEB)},{v:tot>0?(totEB/tot*100).toFixed(1)+'%':'—'}]});
+    showDrillDown('💰','Revenue — '+(isJan26?'Jan 2026':'FY 2025')+(buFilter?' | '+buFilter:''),
+      'Revenue: $'+fM(rev)+'M · GP: $'+fM(gp)+'M · EBITDA: $'+fM(ebitda)+'M',
+      'SAP ERP — Management Accounts',rows,
+      [{label:'#'},{label:'Business Unit'},{label:'Revenue',num:true},{label:'Gross Profit',num:true},
+       {label:'GP%',num:true},{label:'EBITDA',num:true},{label:'EBITDA%',num:true}]);
+  }
+  function ddHistAll(metric){
+    var rows=YR_LABELS.map(function(y,i){
+      var r=REV_ANN[i]||0,e=EBD_ANN[i]||0,g=r-(COGS_ANN[i]||0);
+      var hi=y===activeYear;
+      return {cells:[{v:y,color:hi?GOLD:''},{v:fV(r),color:hi?GOLD:''},{v:fV(g)},
+        {v:r>0?(g/r*100).toFixed(1)+'%':'—'},{v:fV(e)},{v:r>0?(e/r*100).toFixed(1)+'%':'—'}]};
+    });
+    showDrillDown('📈','Historical '+metric+' — FY 2016 to Jan 2026',
+      'Selected: '+activeYear+' · '+metric+': $'+fM(metric==='Revenue'?rev:ebitda)+'M',
+      'SAP ERP — Annual Consolidation',rows,
+      [{label:'Year'},{label:'Revenue',num:true},{label:'Gross Profit',num:true},
+       {label:'GP%',num:true},{label:'EBITDA',num:true},{label:'EBITDA%',num:true}]);
+  }
+  function ddAR(){
+    if(!showARAP) return;
+    var top=arCusts.slice().sort(function(a,b){return b.amount-a.amount;}).slice(0,25);
+    var rows=top.map(function(c,i){
+      var od=(+c.d91_120||0)+(+c.over120||0);
+      return {cells:[{v:i+1},{v:c.customer||'—'},{v:(c.bu||'').trim()},
+        {v:fV(c.amount)},{v:fV(c.not_due||0)},{v:fV(c.d0_30||0)},
+        {v:fV(c.d31_60||0)},{v:fV(c.d61_90||0)},
+        {v:fV(od),color:od>100000?RED:od>30000?GOLD:''}]};
+    });
+    var bkts=(!buFilter&&ad.ar&&ad.ar.buckets)||{};
+    var sumF=function(k){return arCusts.reduce(function(s,c){return s+(+c[k]||0);},0);};
+    rows.unshift({_total:true,cells:[{v:'∑'},{v:'ALL '+arCusts.length+' CUSTOMERS'+(buFilter?' — '+buFilter:'')},{v:''},
+      {v:fV(arTotal)},{v:fV(bkts.not_due||sumF('not_due'))},{v:fV(bkts.d0_30||sumF('d0_30'))},
+      {v:fV(bkts.d31_60||sumF('d31_60'))},{v:fV(bkts.d61_90||sumF('d61_90'))},
+      {v:fV(arOD),color:RED}]});
+    showDrillDown('🧾','AR Outstanding — Ageing Detail — Jan 2026'+(buFilter?' | '+buFilter:''),
+      'Total AR: $'+fM(arTotal)+'M · Overdue 90d+: $'+fM(arOD)+'M ('+arODPct+'%) · '+arCusts.length+' customers',
+      'SAP ERP — AR Ageing Report Jan 2026',rows,
+      [{label:'#'},{label:'Customer'},{label:'BU'},{label:'Total',num:true},
+       {label:'Not Due',num:true},{label:'0-30d',num:true},{label:'31-60d',num:true},
+       {label:'61-90d',num:true},{label:'90d+',num:true}]);
+  }
+  function ddAP(){
+    if(!showARAP) return;
+    var top=apVends.slice().sort(function(a,b){return b.amount-a.amount;}).slice(0,25);
+    var rows=top.map(function(v,i){
+      var od=(+v.d90_120||0)+(+v.over121||0);
+      return {cells:[{v:i+1},{v:v.vendor||'—'},{v:(v.bu||'').trim()},
+        {v:fV(v.amount)},{v:fV(v.future||0)},{v:fV(v.d0_30||0)},
+        {v:fV(v.d31_60||0)},{v:fV(v.d61_90||0)},
+        {v:fV(od),color:od>50000?RED:''}]};
+    });
+    var sumF2=function(k){return apVends.reduce(function(s,v){return s+(+v[k]||0);},0);};
+    rows.unshift({_total:true,cells:[{v:'∑'},{v:'ALL '+apVends.length+' VENDORS'+(buFilter?' — '+buFilter:'')},{v:''},
+      {v:fV(apTotal)},{v:fV(sumF2('future'))},{v:fV(sumF2('d0_30'))},
+      {v:fV(sumF2('d31_60'))},{v:fV(sumF2('d61_90'))},
+      {v:fV(sumF2('d90_120')+sumF2('over121')),color:RED}]});
+    showDrillDown('📦','AP Outstanding — Ageing Detail — Jan 2026'+(buFilter?' | '+buFilter:''),
+      'Total AP: $'+fM(apTotal)+'M · Net W/C: $'+fM(netWC)+'M · '+apVends.length+' vendors',
+      'SAP ERP — AP Ageing Report Jan 2026',rows,
+      [{label:'#'},{label:'Vendor'},{label:'BU'},{label:'Total',num:true},
+       {label:'Future',num:true},{label:'0-30d',num:true},{label:'31-60d',num:true},
+       {label:'61-90d',num:true},{label:'90d+',num:true}]);
+  }
+  function ddCredit(){
+    var bl=fd.bank_limits||[];
+    var rows=bl.map(function(b,i){
+      return {cells:[{v:i+1},{v:b.bank||'—'},{v:b.entity||'—'},
+        {v:fV(b.limit||0)},{v:fV(b.used||0),color:(b.used||0)/(b.limit||1)>0.8?RED:''},
+        {v:fV(b.available||0),color:GREEN},{v:bt.limit>0?((b.used||0)/bt.limit*100).toFixed(0)+'%':'—'}]};
+    });
+    rows.push({_total:true,cells:[{v:''},{v:'TOTAL'},{v:''},
+      {v:fV(bt.limit||0)},{v:fV(bt.used||0),color:RED},{v:fV(bt.available||0),color:GREEN},{v:utilPct+'%'}]});
+    showDrillDown('🏦','Credit Facilities — Utilization by Bank',
+      'Limit: $'+fM(bt.limit||0)+'M · Used: $'+fM(bt.used||0)+'M · Available: $'+fM(bt.available||0)+'M',
+      'Bank Statements / Facilities Register',rows,
+      [{label:'#'},{label:'Bank'},{label:'Entity'},{label:'Limit',num:true},
+       {label:'Utilized',num:true},{label:'Available',num:true},{label:'Util%',num:true}]);
+  }
+  function ddCapex(){
+    var cx=(fpd.capex_bu||[]).filter(function(c){return(c.fy2025>0||c.jan2026>0)&&(!buFilter||c.bu===buFilter);})
+      .sort(function(a,b){return b.fy2025-a.fy2025;});
+    var rows=cx.map(function(c,i){return {cells:[{v:i+1},{v:c.bu},{v:fV(c.fy2025)},{v:fV(c.jan2026)},{v:fV(c.jan2026*12)+' est.'}]};});
+    var t25=cx.reduce(function(s,c){return s+c.fy2025;},0);
+    var t26=cx.reduce(function(s,c){return s+c.jan2026;},0);
+    rows.push({_total:true,cells:[{v:''},{v:'TOTAL'},{v:fV(t25)},{v:fV(t26)},{v:fV(t26*12)+' est.'}]});
+    showDrillDown('🔧','CAPEX by Business Unit','FY 2025: $'+fM(t25)+'M · Jan 2026: $'+fM(t26)+'M',
+      'SAP ERP — Asset Register',rows,
+      [{label:'#'},{label:'BU'},{label:'FY 2025',num:true},{label:'Jan 2026',num:true},{label:'Run-Rate',num:true}]);
+  }
+
+  // ── A: KPI Cards ─────────────────────────────────────────────────────
+  var ytdDiv=document.getElementById('es-ytd-kpis');
+  if(ytdDiv){
+    var revTxt=revGrw?(parseFloat(revGrw)>=0?'▲ ':'▼ ')+Math.abs(parseFloat(revGrw))+'% vs prior year':'—';
+    if(showARAP){
+      // Jan 2026 — show Revenue, GP, EBITDA, AR, AP, Credit
+      ytdDiv.innerHTML=
+        mkCard('Jan 2026 Revenue',  '$'+fM(rev)+'M',
+          revTxt+(runRate?' · Run-rate $'+fM(runRate)+'M/yr':''),'accent',ddRevenue)+
+        mkCard('Gross Profit',      '$'+fM(gp)+'M',  'GP Margin: '+gpPct+'%','green',function(){ddHistAll('Gross Profit');})+
+        mkCard('EBITDA',            '$'+fM(ebitda)+'M','Margin: '+ebPct+'%','green',function(){ddHistAll('EBITDA');})+
+        mkCard('AR Outstanding',    '$'+fM(arTotal)+'M',
+          arODPct+'% overdue 90d+ · '+arCusts.length+' customers','red',ddAR)+
+        mkCard('AP Outstanding',    '$'+fM(apTotal)+'M',
+          'Net W/C: $'+fM(netWC)+'M · '+apVends.length+' vendors','',ddAP)+
+        mkCard('Credit Available',  '$'+fM(bt.available||0)+'M',
+          utilPct+'% utilized of $'+fM(bt.limit||0)+'M','',ddCredit);
+    } else if(is2025){
+      // FY 2025 — show Revenue, GP, EBITDA, CAPEX, EBITDA margin, 5yr CAGR
+      var cagr5=REV_ANN[4]>0?(Math.pow(rev/REV_ANN[4],1/5)-1)*100:0;
+      ytdDiv.innerHTML=
+        mkCard('FY 2025 Revenue',   '$'+fM(rev)+'M',  revTxt,'accent',ddRevenue)+
+        mkCard('Gross Profit',      '$'+fM(gp)+'M',   'GP Margin: '+gpPct+'%','green',function(){ddHistAll('Gross Profit');})+
+        mkCard('EBITDA',            '$'+fM(ebitda)+'M','EBITDA Margin: '+ebPct+'%','green',function(){ddHistAll('EBITDA');})+
+        mkCard('CAPEX FY 2025',     '$'+fM(capex)+'M','Capital expenditure full year','accent',ddCapex)+
+        mkCard('Credit Available',  '$'+fM(bt.available||0)+'M',utilPct+'% utilized of $'+fM(bt.limit||0)+'M','',ddCredit)+
+        mkCard('Revenue CAGR 5yr',  cagr5.toFixed(1)+'%','2021 → 2025 compound annual growth','','');
+    } else {
+      // Historical — show Revenue, GP, EBITDA, prior yr comparison, YoY, CAGR
+      var yrCagr=yrIdx>=5&&REV_ANN[4]>0?(Math.pow(rev/REV_ANN[4],1/(yrIdx-4))-1)*100:0;
+      var priorGP=yrIdx>0?REV_ANN[yrIdx-1]-(COGS_ANN[yrIdx-1]||0):0;
+      ytdDiv.innerHTML=
+        mkCard('Revenue — '+activeYear, '$'+fM(rev)+'M',revTxt,'accent',function(){ddHistAll('Revenue');})+
+        mkCard('Gross Profit',          '$'+fM(gp)+'M', 'GP Margin: '+gpPct+'%','green',function(){ddHistAll('Gross Profit');})+
+        mkCard('EBITDA',                '$'+fM(ebitda)+'M','Margin: '+ebPct+'%','green',function(){ddHistAll('EBITDA');})+
+        mkCard('Prior Year Revenue',    '$'+fM(priorRev)+'M','FY '+(yrIdx>0?YR_LABELS[yrIdx-1]:activeYear),'',function(){ddHistAll('Revenue');})+
+        mkCard('Prior Year EBITDA',     '$'+fM(priorEB)+'M', (priorRev>0?'Margin: '+(priorEB/priorRev*100).toFixed(1)+'%':''),'',function(){ddHistAll('EBITDA');})+
+        mkCard('Revenue CAGR',          (yrIdx>=5?yrCagr.toFixed(1)+'%':'N/A'),'2021 → '+activeYear,'','');
+    }
+  }
+
+  // ── WC section — gated: AR/AP only Jan 2026; CAPEX always ──────────
+  var wcDiv=document.getElementById('es-wc-kpis');
+  if(wcDiv){
+    if(showARAP){
+      wcDiv.innerHTML=
+        mkCard('Total AR',         '$'+fM(arTotal)+'M',arCusts.length+' customers · '+arODPct+'% overdue 90d+','red',ddAR)+
+        mkCard('Total AP',         '$'+fM(apTotal)+'M',apVends.length+' vendors','',ddAP)+
+        mkCard('Net Working Cap.', '$'+fM(netWC)+'M','AR − AP'+(arOD>0?' · OD 90d+: $'+fM(arOD)+'M':''),netWC>=0?'green':'red',
+          function(){
+            showDrillDown('💰','Working Capital — AR & AP Summary',
+              'AR: $'+fM(arTotal)+'M · AP: $'+fM(apTotal)+'M · NWC: $'+fM(netWC)+'M',
+              'SAP ERP — Jan 2026',[
+                {_total:true,cells:[{v:'AR'},{v:'Accounts Receivable ('+arCusts.length+' customers)'},{v:fV(arTotal)},{v:''}]},
+                {cells:[{v:''},{v:'Overdue 90d+'},{v:fV(arOD),color:RED},{v:arODPct+'%',color:RED}]},
+                {_total:true,cells:[{v:'AP'},{v:'Accounts Payable ('+apVends.length+' vendors)'},{v:fV(apTotal)},{v:''}]},
+                {_total:true,cells:[{v:'NWC'},{v:'Net Working Capital'},{v:fV(netWC),color:netWC>=0?GREEN:RED},{v:''}]}
+              ],[{label:'Cat.'},{label:'Description'},{label:'Amount',num:true},{label:''}]);
+          })+
+        mkCard('Credit Limit',     '$'+fM(bt.limit||0)+'M',utilPct+'% utilized','accent',ddCredit)+
+        mkCard('Credit Available', '$'+fM(bt.available||0)+'M','Headroom across all banks','green',ddCredit)+
+        mkCard('CAPEX Jan 2026',   '$'+fM(cap26)+'M','Run-rate $'+fM(cap26*12)+'M/yr · FY25: $'+fM(cap25)+'M','',ddCapex);
+    } else {
+      // For non-Jan26 years: show CAPEX + credit only, with note for AR/AP
+      wcDiv.innerHTML=
+        mkCard('Credit Limit',   '$'+fM(bt.limit||0)+'M',utilPct+'% utilized','accent',ddCredit)+
+        mkCard('Credit Available','$'+fM(bt.available||0)+'M','Headroom across all banks','green',ddCredit)+
+        mkCard('Loan Balances',  '$'+fM(loanBal)+'M',loans.length+' facilities','',ddCredit)+
+        mkCard('CAPEX FY 2025',  '$'+fM(cap25)+'M','Full-year capital expenditure','',ddCapex)+
+        mkCard('CAPEX Jan 2026', '$'+fM(cap26)+'M','Latest month: Jan 2026 only','',ddCapex)+
+        '<div style="grid-column:1/-1;background:#F8F9FA;border:1px dashed #CBD5E1;border-radius:8px;'+
+          'padding:12px 16px;color:#64748B;font-size:12px;display:flex;align-items:center;gap:10px">'+
+          '<span style="font-size:20px">ℹ️</span>'+
+          '<span>AR & AP ageing data is available for <strong>January 2026</strong> only. '+
+          'Select <strong>Jan 2026 — 2026 YTD</strong> in the Period filter to view AR/AP outstanding balances, '+
+          'ageing buckets, and working capital analysis.</span></div>';
+    }
+  }
+
+  // ── Charts (all periods) ─────────────────────────────────────────────
+  var colors8=['#1F2D5A','#C9A84C','#CC3300','#1A6B3C','#4e7bd4','#e07b39','#6c757d','#a855f7','#0ea5e9','#d97706'];
+
+  // Trend chart — highlight active year
+  destroyChart('es-rev-trend');
+  makeChart('es-rev-trend',{type:'bar',data:{labels:YR_LABELS,datasets:[
+    {label:'Revenue $M',data:REV_ANN.map(function(v){return +(v/1e6).toFixed(2);}),
+     backgroundColor:YR_LABELS.map(function(y){return y===activeYear?'rgba(201,168,76,0.95)':'rgba(31,45,90,0.78)';}),borderRadius:3,order:2},
+    {label:'EBITDA $M', data:EBD_ANN.map(function(v){return +(v/1e6).toFixed(2);}),
+     type:'line',borderColor:GREEN,backgroundColor:'rgba(26,107,60,0.08)',
+     pointBackgroundColor:YR_LABELS.map(function(y){return y===activeYear?'#FF6B00':GREEN;}),
+     pointRadius:YR_LABELS.map(function(y){return y===activeYear?6:3;}),
+     borderWidth:2.5,fill:false,tension:0.3,order:1}
+  ]},options:{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{position:'bottom',labels:{font:{size:10}}}},
+    scales:{x:ax(),y:{...ax(),ticks:{...ax().ticks,callback:function(v){return '$'+v.toFixed(0)+'M';}}}}}});
+
+  // YoY Growth
+  destroyChart('es-yoy-growth');
+  var yoy=REV_ANN.map(function(v,i){return i===0?0:+((v-REV_ANN[i-1])/REV_ANN[i-1]*100).toFixed(1);});
+  makeChart('es-yoy-growth',{type:'bar',data:{labels:YR_LABELS,datasets:[{label:'YoY Growth %',data:yoy,
+    backgroundColor:YR_LABELS.map(function(y,i){return y===activeYear?'rgba(201,168,76,0.95)':yoy[i]>=0?'rgba(26,107,60,0.65)':'rgba(204,0,0,0.65)';}),borderRadius:4
+  }]},options:{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){return ctx.parsed.y.toFixed(1)+'%';}}}},
+    scales:{x:ax(),y:{...ax(),ticks:{...ax().ticks,callback:function(v){return v+'%';}}}}}});
+
+  // BU bar + donut
+  destroyChart('es-bu-bar26'); destroyChart('es-bu-donut26');
+  var sfxBU=isJan26?'_jan26':is2025?'_2025':null;
+  var lbl1=document.getElementById('es-bu-bar-lbl'), lbl2=document.getElementById('es-bu-donut-lbl');
+  if(sfxBU){
+    var src2=buFilter?spots.filter(function(b){return b.bu===buFilter;}):spots.filter(function(b){return b['rev'+sfxBU]>0;});
+    var srt=src2.slice().sort(function(a,b){return b['rev'+sfxBU]-a['rev'+sfxBU];});
+    if(lbl1)lbl1.textContent='Revenue & EBITDA by BU — '+(isJan26?'Jan 2026':'FY 2025')+(buFilter?' | '+buFilter:'');
+    if(lbl2)lbl2.textContent='Revenue Share — '+(isJan26?'Jan 2026':'FY 2025')+(buFilter?' | '+buFilter:'');
+    makeChart('es-bu-bar26',{type:'bar',data:{labels:srt.map(function(b){return b.bu;}),datasets:[
+      {label:'Revenue',data:srt.map(function(b){return +(b['rev'+sfxBU]/1e6).toFixed(3);}),backgroundColor:'rgba(31,45,90,0.82)',borderRadius:4},
+      {label:'EBITDA', data:srt.map(function(b){return +(b['ebitda'+sfxBU]/1e6).toFixed(3);}),
+       backgroundColor:srt.map(function(b){return b['ebitda'+sfxBU]>=0?'rgba(201,168,76,0.85)':'rgba(204,0,0,0.75)';}),borderRadius:4}
+    ]},options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom',labels:{font:{size:10}}}},
+      scales:{x:{...ax(),ticks:{...ax().ticks,maxRotation:35,font:{size:9}}},y:{...ax(),ticks:{...ax().ticks,callback:function(v){return '$'+v.toFixed(2)+'M';}}}}}});
+    var bPos=srt.filter(function(b){return b['rev'+sfxBU]>0;});
+    makeChart('es-bu-donut26',{type:'doughnut',data:{
+      labels:bPos.map(function(b){return b.bu;}),
+      datasets:[{data:bPos.map(function(b){return +(b['rev'+sfxBU]/1e6).toFixed(3);}),
+        backgroundColor:bPos.map(function(_,i){return colors8[i%colors8.length];}),borderWidth:2,borderColor:'#fff'}]
+    },options:{responsive:true,maintainAspectRatio:false,cutout:'52%',
+      plugins:{legend:{position:'right',labels:{font:{size:9},boxWidth:10}},
+        tooltip:{callbacks:{label:function(ctx){return ctx.label+': $'+ctx.parsed.toFixed(2)+'M';}}}}}});
+  } else {
+    if(lbl1)lbl1.textContent='Annual Revenue — '+activeYear+' highlighted';
+    if(lbl2)lbl2.textContent='Annual EBITDA — '+activeYear+' highlighted';
+    makeChart('es-bu-bar26',{type:'bar',data:{labels:YR_LABELS,datasets:[
+      {label:'Revenue $M',data:REV_ANN.map(function(v){return +(v/1e6).toFixed(2);}),
+       backgroundColor:YR_LABELS.map(function(y){return y===activeYear?GOLD:'rgba(31,45,90,0.75)';}),borderRadius:4}
+    ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{...ax(),ticks:{...ax().ticks,maxRotation:35,font:{size:9}}},y:{...ax(),ticks:{...ax().ticks,callback:function(v){return '$'+v.toFixed(0)+'M';}}}}}});
+    makeChart('es-bu-donut26',{type:'bar',data:{labels:YR_LABELS,datasets:[
+      {label:'EBITDA $M',data:EBD_ANN.map(function(v){return +(v/1e6).toFixed(2);}),
+       backgroundColor:YR_LABELS.map(function(y){return y===activeYear?GREEN:'rgba(26,107,60,0.55)';}),borderRadius:4}
+    ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:ax(),y:{...ax(),ticks:{...ax().ticks,callback:function(v){return '$'+v.toFixed(0)+'M';}}}}}});
+  }
+
+  // Margin charts
+  destroyChart('es-ebitda-bu-margin');
+  var bMargin=(fpd.bu_spotlight||[]).filter(function(b){
+    return b.bu!=='TOTAL CoGS'&&b.bu!=='Sub-Total'&&b.bu!=='TOTAL'&&
+      (b.ebitda_pct_2025||b.ebitda_pct_jan26)&&(!buFilter||b.bu===buFilter);
+  }).sort(function(a,b){return b.ebitda_pct_2025-a.ebitda_pct_2025;});
+  makeChart('es-ebitda-bu-margin',{type:'bar',data:{labels:bMargin.map(function(b){return b.bu;}),datasets:[
+    {label:'FY 2025 EBITDA%',  data:bMargin.map(function(b){return +b.ebitda_pct_2025;}),backgroundColor:'rgba(31,45,90,0.75)',borderRadius:4},
+    {label:'Jan 2026 EBITDA%', data:bMargin.map(function(b){return +b.ebitda_pct_jan26;}),
+     backgroundColor:bMargin.map(function(b){return b.ebitda_pct_jan26>=0?'rgba(201,168,76,0.85)':'rgba(204,0,0,0.7)';}),borderRadius:4}
+  ]},options:{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{position:'bottom',labels:{font:{size:10}}}},
+    scales:{x:{...ax(),ticks:{...ax().ticks,maxRotation:35,font:{size:9}}},y:{...ax(),ticks:{...ax().ticks,callback:function(v){return v.toFixed(0)+'%';}}}}}});
+
+  destroyChart('es-margin-trend-new');
+  var gpPctA=REV_ANN.map(function(r,i){return r>0?(r-(COGS_ANN[i]||0))/r*100:0;});
+  var ebPctA=REV_ANN.map(function(r,i){return r>0?EBD_ANN[i]/r*100:0;});
+  makeChart('es-margin-trend-new',{type:'line',data:{labels:YR_LABELS,datasets:[
+    {label:'GP %',    data:gpPctA.map(function(v){return +v.toFixed(1);}),borderColor:GOLD,backgroundColor:'rgba(201,168,76,0.10)',borderWidth:2.5,tension:0.3,pointRadius:3,fill:false},
+    {label:'EBITDA %',data:ebPctA.map(function(v){return +v.toFixed(1);}),borderColor:GREEN,backgroundColor:'rgba(26,107,60,0.08)',borderWidth:2.5,tension:0.3,pointRadius:3,fill:false}
+  ]},options:{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{position:'bottom',labels:{font:{size:10}}}},
+    scales:{x:ax(),y:{...ax(),ticks:{...ax().ticks,callback:function(v){return v.toFixed(0)+'%';}}}}}});
+
+  // Facilities + CAPEX
+  destroyChart('es-fac-chart');
+  var bl=fd.bank_limits||[];
+  makeChart('es-fac-chart',{type:'bar',data:{labels:bl.map(function(b){return b.bank+'\n'+b.entity;}),datasets:[
+    {label:'Utilized', data:bl.map(function(b){return +(b.used/1e6).toFixed(2);}),backgroundColor:'rgba(204,0,0,0.70)',borderRadius:3},
+    {label:'Available',data:bl.map(function(b){return +(b.available/1e6).toFixed(2);}),backgroundColor:'rgba(26,107,60,0.60)',borderRadius:3}
+  ]},options:{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{position:'bottom',labels:{font:{size:10}}}},
+    scales:{x:{...ax(),stacked:true,ticks:{...ax().ticks,maxRotation:40,font:{size:9}}},
+      y:{...ax(),stacked:true,ticks:{...ax().ticks,callback:function(v){return '$'+v.toFixed(1)+'M';}}}}}});
+
+  destroyChart('es-capex-chart');
+  var capexBU=(fpd.capex_bu||[]).filter(function(c){
+    return(c.fy2025>0||c.jan2026>0)&&(!buFilter||c.bu===buFilter);
+  }).sort(function(a,b){return b.fy2025-a.fy2025;});
+  makeChart('es-capex-chart',{type:'bar',data:{labels:capexBU.map(function(c){return c.bu;}),datasets:[
+    {label:'FY 2025', data:capexBU.map(function(c){return +(c.fy2025/1e6).toFixed(3);}),backgroundColor:'rgba(31,45,90,0.82)',borderRadius:4},
+    {label:'Jan 2026',data:capexBU.map(function(c){return +(c.jan2026/1e6).toFixed(3);}),backgroundColor:'rgba(201,168,76,0.85)',borderRadius:4}
+  ]},options:{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{position:'bottom',labels:{font:{size:10}}}},
+    scales:{x:{...ax(),ticks:{...ax().ticks,maxRotation:35,font:{size:9}}},y:{...ax(),ticks:{...ax().ticks,callback:function(v){return '$'+v.toFixed(2)+'M';}}}}}});
+
+  // ── Signals ──────────────────────────────────────────────────────────
+  var alertsDiv=document.getElementById('es-alerts');
+  if(alertsDiv){
+    var mkSig=function(icon,title,body,color,fn){
+      var id='sig'+Math.random().toString(36).slice(2,8);
+      var h=fn?'<div style="font-size:9px;color:#aaa;margin-top:4px">🔍 Click for detail</div>':'';
+      var el='<div id="'+id+'" style="background:#fff;border:1px solid #e5e7eb;border-left:4px solid '+color+
+        ';border-radius:8px;padding:14px 16px;'+(fn?'cursor:pointer;':'')+'">' +
+        '<div style="font-weight:700;font-size:12.5px;color:#1F2D5A;margin-bottom:5px">'+icon+' '+title+'</div>'+
+        '<div style="font-size:11.5px;color:#555;line-height:1.6">'+body+'</div>'+h+'</div>';
+      if(fn) setTimeout(function(){var n=document.getElementById(id);if(n)n.onclick=fn;},80);
+      return el;
+    };
+    var sigs=[];
+    var rev25=fpd.group_kpis.rev_2025||0;
+    // BU performance signal
+    if(sfxBU){
+      var topBU=(buFilter?spots.filter(function(b){return b.bu===buFilter;}):spots)
+        .filter(function(b){return b['rev'+sfxBU]>0;}).sort(function(a,b){return b['rev'+sfxBU]-a['rev'+sfxBU];})[0];
+      if(topBU) sigs.push(mkSig('🏆','Top BU — '+(isJan26?'Jan 2026':'FY 2025')+(buFilter?' | '+buFilter:''),
+        '<strong>'+topBU.bu+'</strong>: Revenue $'+fM(topBU['rev'+sfxBU])+'M · EBITDA $'+fM(topBU['ebitda'+sfxBU])+'M ('+topBU['ebitda_pct'+sfxBU].toFixed(1)+'% margin).',GOLD,ddRevenue));
+    }
+    // Run-rate (Jan 26 only)
+    if(isJan26){
+      var rrP=rev25>0?(runRate/rev25*100).toFixed(0):0;
+      sigs.push(mkSig('📈','FY 2026 Run-Rate vs FY 2025',
+        'Annualized: <strong>$'+fM(runRate)+'M</strong> = <strong>'+rrP+'%</strong> of FY 2025 ($'+fM(rev25)+'M). '+
+        (runRate>=rev25?'Tracking above prior year.':'Monitor vs full-year target.'),runRate>=rev25?GREEN:GOLD,ddRevenue));
+    }
+    // Revenue growth
+    if(revGrw!==null){
+      var rg=parseFloat(revGrw);
+      sigs.push(mkSig(rg>=10?'🟢':rg>=0?'🟡':'🔴','Revenue Growth — '+activeYear,
+        'Revenue: <strong>$'+fM(rev)+'M</strong> · YoY change: <strong>'+(rg>=0?'+':'')+revGrw+'%</strong> vs prior year $'+fM(priorRev)+'M. '+
+        (rg>=10?'Strong growth.':rg>=0?'Modest growth.':'Revenue declined — investigate.'),rg>=10?GREEN:rg>=0?GOLD:RED,ddRevenue));
+    }
+    // AR (Jan 26 only)
+    if(showARAP&&arTotal>0){
+      sigs.push(mkSig(arOD>5e6?'🔴':'🟡','AR Collection Risk'+(buFilter?' — '+buFilter:''),
+        'AR: <strong>$'+fM(arTotal)+'M</strong> · '+arCusts.length+' customers · Overdue 90d+: <strong>$'+fM(arOD)+'M ('+arODPct+'%)</strong>. '+
+        (arOD>5e6?'High overdue — escalate collection.':arOD>2e6?'Moderate — monitor top accounts.':'Within range.'),
+        arOD>5e6?RED:GOLD,ddAR));
+      sigs.push(mkSig(netWC>0?'🟢':'🔴','Net Working Capital'+(buFilter?' — '+buFilter:''),
+        'NWC: <strong>$'+fM(netWC)+'M</strong> (AR $'+fM(arTotal)+'M − AP $'+fM(apTotal)+'M). '+(netWC>0?'Positive — healthy liquidity.':'Negative — accelerate AR.'),
+        netWC>0?GREEN:RED));
+    }
+    // EBITDA margin
+    var ebN=parseFloat(ebPct);
+    sigs.push(mkSig(ebN>=25?'🟢':ebN>=15?'🟡':'🔴','EBITDA Margin — '+activeYear+(buFilter?' | '+buFilter:''),
+      'EBITDA margin: <strong>'+ebPct+'%</strong>. '+(ebN>=25?'Excellent profitability.':ebN>=15?'Acceptable.':'Below target — cost review needed.'),
+      ebN>=25?GREEN:ebN>=15?GOLD:RED));
+    // Credit
+    var uN=parseInt(utilPct);
+    sigs.push(mkSig(uN>80?'🔴':uN>60?'🟡':'🟢','Credit Utilization',
+      utilPct+'% utilized · Headroom: <strong>$'+fM(bt.available||0)+'M</strong>. '+(uN>80?'High.':uN>60?'Moderate.':'Comfortable.'),
+      uN>80?RED:uN>60?GOLD:GREEN,ddCredit));
+    alertsDiv.innerHTML=sigs.join('');
+  }
+
+  console.log('[S30] year='+activeYear+' bu='+(buFilter||'all')+' showARAP='+showARAP+' rev=$'+fM(rev)+'M');
+};
+
+// Rename nav
+document.querySelectorAll('.nav-item').forEach(function(el){
+  if(el.getAttribute('onclick')&&el.getAttribute('onclick').indexOf("'overview'")>=0){
+    el.childNodes.forEach(function(n){if(n.nodeType===3&&n.textContent.trim())n.textContent='Executive Summary';});
+  }
+});
+if(typeof pageTitles==='object') pageTitles['overview']='Executive Summary — Al Majal Group';
+
+})();
+// END Section 30
 </script>
 </body>
 </html>
