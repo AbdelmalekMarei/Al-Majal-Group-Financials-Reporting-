@@ -1,0 +1,2111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Al Holoul Framework – Feb 2026</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f4f8;color:#1e293b;display:flex;min-height:100vh;}
+#sidebar{width:225px;min-width:225px;background:#1B3D6E;display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;overflow-y:auto;z-index:100;box-shadow:3px 0 12px rgba(0,0,0,.18);}
+.logo-area{padding:14px;background:#fff;border-bottom:3px solid #00B5B8;}
+.nav-group{padding:7px 0 2px;}
+.nav-label{font-size:9px;font-weight:700;color:#7FBCD2;letter-spacing:1.2px;padding:5px 15px 3px;text-transform:uppercase;}
+.nav-item{display:flex;align-items:center;gap:8px;padding:9px 15px;cursor:pointer;font-size:12px;color:#c8dff0;border-left:3px solid transparent;transition:all .15s;user-select:none;}
+.nav-item:hover{background:rgba(255,255,255,.08);color:#fff;}
+.nav-item.active{background:rgba(0,181,184,.2);color:#fff;border-left-color:#00B5B8;font-weight:600;}
+.nav-divider{height:1px;background:rgba(255,255,255,.1);margin:3px 14px;}
+#main{margin-left:225px;flex:1;display:flex;flex-direction:column;}
+#topbar{background:#1B3D6E;color:#fff;padding:0 22px;height:50px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;box-shadow:0 2px 8px rgba(0,0,0,.15);}
+#pg-title{font-size:15px;font-weight:700;}
+.topbar-meta{font-size:11px;color:#90bcd8;}
+.page{display:none;padding:18px 22px 40px;}
+.page.active{display:block;}
+/* KPI */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(175px,1fr));gap:11px;margin-bottom:18px;}
+.kpi{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:13px 15px;border-top:4px solid #cbd5e1;box-shadow:0 1px 4px rgba(0,0,0,.05);}
+.kpi.g{border-top-color:#16a34a;}.kpi.r{border-top-color:#dc2626;}.kpi.a{border-top-color:#f59e0b;}.kpi.b{border-top-color:#00B5B8;}
+.kpi-lbl{font-size:9.5px;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px;font-weight:600;}
+.kpi-val{font-size:19px;font-weight:800;color:#1e293b;}
+.kpi-val.pos{color:#16a34a;}.kpi-val.neg{color:#dc2626;}.kpi-val.amb{color:#d97706;}
+.kpi-sub{font-size:9.5px;color:#94a3b8;margin-top:3px;}
+/* Cards */
+.card{background:#fff;border:1px solid #e2e8f0;border-radius:10px;margin-bottom:15px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.05);}
+.card-hdr{padding:10px 15px;background:#f8fafc;border-bottom:1px solid #e2e8f0;font-size:12px;font-weight:700;color:#1B3D6E;display:flex;justify-content:space-between;align-items:center;}
+.card-hdr span{font-weight:400;color:#94a3b8;font-size:11px;}
+/* Tables */
+.tbl{width:100%;border-collapse:collapse;font-size:11.5px;}
+.tbl th{background:#f1f5f9;color:#475569;font-weight:700;padding:8px 9px;text-align:right;border-bottom:2px solid #e2e8f0;white-space:nowrap;}
+.tbl th:first-child{text-align:left;}
+.tbl td{padding:6px 9px;border-bottom:1px solid #f1f5f9;text-align:right;color:#334155;}
+.tbl td:first-child{text-align:left;color:#1e293b;}
+.tbl tr:last-child td{border-bottom:none;}
+.tbl tr.alt td{background:#f8fafc;}
+.tbl tr.sec td{background:#e8f4f8;color:#1B3D6E;font-weight:700;padding:7px 9px;}
+.tbl tr.sub td{background:#f0f9ff;font-weight:700;border-top:1px solid #bae6fd;}
+.tbl tr.tot td{background:#1B3D6E;color:#fff;font-weight:800;border-top:2px solid #00B5B8;font-size:12px;}
+.tbl .ind{padding-left:20px;}.tbl .dim{color:#94a3b8;}.tbl .pos{color:#16a34a;}.tbl .neg{color:#dc2626;}.tbl .amb{color:#d97706;}
+/* Layout */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:15px;margin-bottom:15px;}
+.three-col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:15px;margin-bottom:15px;}
+.ph{font-size:21px;font-weight:800;color:#1B3D6E;margin-bottom:3px;}
+.ps{font-size:12px;color:#64748b;margin-bottom:16px;border-left:3px solid #00B5B8;padding-left:9px;}
+/* Alerts */
+.alert{padding:9px 13px;border-radius:7px;font-size:11.5px;margin-bottom:12px;}
+.alert.warn{background:#fefce8;border:1px solid #fde68a;color:#92400e;}
+.alert.danger{background:#fef2f2;border:1px solid #fecaca;color:#991b1b;}
+.alert.info{background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;}
+.alert.ok{background:#f0fdf4;border:1px solid #bbf7d0;color:#166534;}
+/* Badges */
+.badge{display:inline-block;padding:2px 8px;border-radius:9999px;font-size:10px;font-weight:700;}
+.badge.ok{background:#dcfce7;color:#166534;}.badge.warn{background:#fef9c3;color:#854d0e;}.badge.danger{background:#fee2e2;color:#991b1b;}
+/* CSS Bar Charts */
+.bar-chart{display:flex;flex-direction:column;gap:7px;padding:14px;}
+.bar-row{display:flex;align-items:center;gap:10px;}
+.bar-label{width:120px;font-size:10.5px;color:#475569;font-weight:600;text-align:right;flex-shrink:0;}
+.bar-track{flex:1;background:#f1f5f9;border-radius:4px;height:26px;overflow:hidden;}
+.bar-fill{height:100%;border-radius:4px;display:flex;align-items:center;padding-left:9px;font-size:10.5px;font-weight:700;color:#fff;transition:width .6s ease;min-width:40px;}
+.bar-val{width:80px;font-size:10.5px;font-weight:700;color:#475569;flex-shrink:0;}
+/* Donut chart */
+.donut-wrap{display:flex;align-items:center;gap:20px;padding:14px;}
+.donut-legend{display:flex;flex-direction:column;gap:6px;}
+.donut-item{display:flex;align-items:center;gap:7px;font-size:11px;}
+.donut-dot{width:11px;height:11px;border-radius:50%;flex-shrink:0;}
+/* RAG */
+.rag-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;margin-bottom:7px;}
+.rag-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0;}
+.rag-title{font-size:11.5px;font-weight:700;}
+.rag-sub{font-size:10px;margin-top:1px;}
+/* Waterfall */
+.wf-row{display:flex;align-items:center;gap:10px;margin-bottom:6px;}
+.wf-label{width:115px;font-size:11px;font-weight:600;text-align:right;flex-shrink:0;}
+.wf-track{flex:1;background:#f1f5f9;border-radius:4px;height:28px;overflow:hidden;position:relative;}
+.wf-bar{height:100%;border-radius:4px;display:flex;align-items:center;padding-left:9px;}
+.wf-bar span{font-size:10.5px;font-weight:700;color:#fff;white-space:nowrap;}
+/* Trend arrows */
+.up{color:#16a34a;font-weight:700;}.dn{color:#dc2626;font-weight:700;}.flat{color:#d97706;font-weight:700;}
+/* Timeline */
+.timeline{display:grid;grid-template-columns:repeat(4,1fr);gap:0;position:relative;padding:10px 0;}
+.tl-line{position:absolute;top:28px;left:12%;right:12%;height:3px;background:linear-gradient(to right,#dc2626,#f59e0b,#16a34a,#1B3D6E);border-radius:2px;}
+.tl-item{text-align:center;padding:0 8px;position:relative;z-index:1;}
+.tl-circle{width:42px;height:42px;border-radius:50%;margin:0 auto 9px;display:flex;align-items:center;justify-content:center;font-size:17px;border:4px solid #fff;box-shadow:0 0 0 2px currentColor;}
+.tl-tag{font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px;}
+.tl-head{font-size:11.5px;font-weight:700;color:#1e293b;margin-bottom:3px;}
+.tl-body{font-size:10px;color:#64748b;}
+
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f4f8;color:#1e293b;display:flex;min-height:100vh;}
+#sidebar{width:225px;min-width:225px;background:#1B3D6E;display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;overflow-y:auto;z-index:100;box-shadow:3px 0 12px rgba(0,0,0,.18);}
+.logo-area{padding:14px;background:#fff;border-bottom:3px solid #00B5B8;}
+.nav-group{padding:7px 0 2px;}
+.nav-label{font-size:9px;font-weight:700;color:#7FBCD2;letter-spacing:1.2px;padding:5px 15px 3px;text-transform:uppercase;}
+.nav-item{display:flex;align-items:center;gap:8px;padding:9px 15px;cursor:pointer;font-size:12px;color:#c8dff0;border-left:3px solid transparent;transition:all .15s;user-select:none;}
+.nav-item:hover{background:rgba(255,255,255,.08);color:#fff;}
+.nav-item.active{background:rgba(0,181,184,.2);color:#fff;border-left-color:#00B5B8;font-weight:600;}
+.nav-divider{height:1px;background:rgba(255,255,255,.1);margin:3px 14px;}
+#main{margin-left:225px;flex:1;display:flex;flex-direction:column;}
+#topbar{background:#1B3D6E;color:#fff;padding:0 22px;height:50px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;box-shadow:0 2px 8px rgba(0,0,0,.15);}
+#pg-title{font-size:15px;font-weight:700;}
+.topbar-meta{font-size:11px;color:#90bcd8;}
+.page{display:none;padding:18px 22px 40px;}
+.page.active{display:block;}
+/* KPI */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(175px,1fr));gap:11px;margin-bottom:18px;}
+.kpi{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:13px 15px;border-top:4px solid #cbd5e1;box-shadow:0 1px 4px rgba(0,0,0,.05);}
+.kpi.g{border-top-color:#16a34a;}.kpi.r{border-top-color:#dc2626;}.kpi.a{border-top-color:#f59e0b;}.kpi.b{border-top-color:#00B5B8;}
+.kpi-lbl{font-size:9.5px;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px;font-weight:600;}
+.kpi-val{font-size:19px;font-weight:800;color:#1e293b;}
+.kpi-val.pos{color:#16a34a;}.kpi-val.neg{color:#dc2626;}.kpi-val.amb{color:#d97706;}
+.kpi-sub{font-size:9.5px;color:#94a3b8;margin-top:3px;}
+/* Cards */
+.card{background:#fff;border:1px solid #e2e8f0;border-radius:10px;margin-bottom:15px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.05);}
+.card-hdr{padding:10px 15px;background:#f8fafc;border-bottom:1px solid #e2e8f0;font-size:12px;font-weight:700;color:#1B3D6E;display:flex;justify-content:space-between;align-items:center;}
+.card-hdr span{font-weight:400;color:#94a3b8;font-size:11px;}
+/* Tables */
+.tbl{width:100%;border-collapse:collapse;font-size:11.5px;}
+.tbl th{background:#f1f5f9;color:#475569;font-weight:700;padding:8px 9px;text-align:right;border-bottom:2px solid #e2e8f0;white-space:nowrap;}
+.tbl th:first-child{text-align:left;}
+.tbl td{padding:6px 9px;border-bottom:1px solid #f1f5f9;text-align:right;color:#334155;}
+.tbl td:first-child{text-align:left;color:#1e293b;}
+.tbl tr:last-child td{border-bottom:none;}
+.tbl tr.alt td{background:#f8fafc;}
+.tbl tr.sec td{background:#e8f4f8;color:#1B3D6E;font-weight:700;padding:7px 9px;}
+.tbl tr.sub td{background:#f0f9ff;font-weight:700;border-top:1px solid #bae6fd;}
+.tbl tr.tot td{background:#1B3D6E;color:#fff;font-weight:800;border-top:2px solid #00B5B8;font-size:12px;}
+.tbl .ind{padding-left:20px;}.tbl .dim{color:#94a3b8;}.tbl .pos{color:#16a34a;}.tbl .neg{color:#dc2626;}.tbl .amb{color:#d97706;}
+/* Layout */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:15px;margin-bottom:15px;}
+.three-col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:15px;margin-bottom:15px;}
+.ph{font-size:21px;font-weight:800;color:#1B3D6E;margin-bottom:3px;}
+.ps{font-size:12px;color:#64748b;margin-bottom:16px;border-left:3px solid #00B5B8;padding-left:9px;}
+/* Alerts */
+.alert{padding:9px 13px;border-radius:7px;font-size:11.5px;margin-bottom:12px;}
+.alert.warn{background:#fefce8;border:1px solid #fde68a;color:#92400e;}
+.alert.danger{background:#fef2f2;border:1px solid #fecaca;color:#991b1b;}
+.alert.info{background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;}
+.alert.ok{background:#f0fdf4;border:1px solid #bbf7d0;color:#166534;}
+/* Badges */
+.badge{display:inline-block;padding:2px 8px;border-radius:9999px;font-size:10px;font-weight:700;}
+.badge.ok{background:#dcfce7;color:#166534;}.badge.warn{background:#fef9c3;color:#854d0e;}.badge.danger{background:#fee2e2;color:#991b1b;}
+.source-badge{display:inline-block;padding:3px 8px;border-radius:6px;font-size:9px;background:#e2e8f0;color:#64748b;font-weight:600;margin-left:6px;vertical-align:middle;}
+.info-icon{display:inline-block;width:16px;height:16px;line-height:16px;text-align:center;background:#e0f2fe;color:#0369a1;border-radius:50%;font-size:11px;font-weight:700;margin-left:4px;cursor:pointer;vertical-align:middle;}
+.drilldown{border-bottom:2px dashed #0369a1;cursor:pointer;color:#0369a1;font-weight:600;transition:all 0.2s;}
+.drilldown:hover{background-color:rgba(3,105,161,0.05);border-bottom-color:#0284c7;}
+/* CSS Bar Charts */
+.bar-chart{display:flex;flex-direction:column;gap:7px;padding:14px;}
+.bar-row{display:flex;align-items:center;gap:10px;}
+.bar-label{width:120px;font-size:10.5px;color:#475569;font-weight:600;text-align:right;flex-shrink:0;}
+.bar-track{flex:1;background:#f1f5f9;border-radius:4px;height:26px;overflow:hidden;}
+.bar-fill{height:100%;border-radius:4px;display:flex;align-items:center;padding-left:9px;font-size:10.5px;font-weight:700;color:#fff;transition:width .6s ease;min-width:40px;}
+.bar-val{width:80px;font-size:10.5px;font-weight:700;color:#475569;flex-shrink:0;}
+/* Donut chart */
+.donut-wrap{display:flex;align-items:center;gap:20px;padding:14px;}
+.donut-legend{display:flex;flex-direction:column;gap:6px;}
+.donut-item{display:flex;align-items:center;gap:7px;font-size:11px;}
+.donut-dot{width:11px;height:11px;border-radius:50%;flex-shrink:0;}
+/* RAG */
+.rag-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;margin-bottom:7px;}
+.rag-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0;}
+.rag-title{font-size:11.5px;font-weight:700;}
+.rag-sub{font-size:10px;margin-top:1px;}
+/* Waterfall */
+.wf-row{display:flex;align-items:center;gap:10px;margin-bottom:6px;}
+.wf-label{width:115px;font-size:11px;font-weight:600;text-align:right;flex-shrink:0;}
+.wf-track{flex:1;background:#f1f5f9;border-radius:4px;height:28px;overflow:hidden;position:relative;}
+.wf-bar{height:100%;border-radius:4px;display:flex;align-items:center;padding-left:9px;}
+.wf-bar span{font-size:10.5px;font-weight:700;color:#fff;white-space:nowrap;}
+/* Trend arrows */
+.up{color:#16a34a;font-weight:700;}.dn{color:#dc2626;font-weight:700;}.flat{color:#d97706;font-weight:700;}
+/* Timeline */
+.timeline{display:grid;grid-template-columns:repeat(4,1fr);gap:0;position:relative;padding:10px 0;}
+.tl-line{position:absolute;top:28px;left:12%;right:12%;height:3px;background:linear-gradient(to right,#dc2626,#f59e0b,#16a34a,#1B3D6E);border-radius:2px;}
+.tl-item{text-align:center;padding:0 8px;position:relative;z-index:1;}
+.tl-circle{width:42px;height:42px;border-radius:50%;margin:0 auto 9px;display:flex;align-items:center;justify-content:center;font-size:17px;border:4px solid #fff;box-shadow:0 0 0 2px currentColor;}
+.tl-tag{font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px;}
+.tl-head{font-size:11.5px;font-weight:700;color:#1e293b;margin-bottom:3px;}
+.tl-body{font-size:10px;color:#64748b;}
+/* MODAL STYLES */
+#modal-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:999;align-items:center;justify-content:center;}
+#modal-overlay.open{display:flex;}
+#modal-dialog{background:#fff;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,0.3);max-width:900px;width:90%;max-height:85vh;overflow-y:auto;position:relative;}
+.modal-hdr{padding:20px 24px;border-bottom:2px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center;background:#f8fafc;font-size:16px;font-weight:700;color:#1B3D6E;position:sticky;top:0;}
+.modal-close{background:#e2e8f0;border:none;border-radius:6px;width:32px;height:32px;cursor:pointer;font-size:20px;color:#475569;transition:all 0.2s;}
+.modal-close:hover{background:#cbd5e1;color:#1e293b;}
+.modal-body{padding:24px;}
+.modal-table{width:100%;border-collapse:collapse;font-size:12px;}
+.modal-table th{background:#f1f5f9;color:#1B3D6E;font-weight:700;padding:10px 12px;text-align:right;border-bottom:2px solid #e2e8f0;}
+.modal-table th:first-child{text-align:left;}
+.modal-table td{padding:8px 12px;border-bottom:1px solid #e2e8f0;text-align:right;color:#475569;}
+.modal-table td:first-child{text-align:left;color:#1e293b;font-weight:500;}
+.modal-table tr:hover{background:#f8fafc;}
+.insight-box{background:#e0f2fe;border-left:4px solid #0284c7;padding:14px;border-radius:6px;margin-top:16px;}
+.insight-box-hdr{font-weight:700;color:#0c4a6e;font-size:12px;display:flex;align-items:center;gap:6px;margin-bottom:6px;}
+.insight-box-txt{color:#0369a1;font-size:11.5px;line-height:1.5;}
+/* View Tracking */
+.vt-log-table{width:100%;border-collapse:collapse;font-size:11.5px;margin-top:10px;}
+.vt-log-table th{background:#1B3D6E;color:#fff;padding:9px 12px;text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;}
+.vt-log-table td{padding:8px 12px;border-bottom:1px solid #e2e8f0;font-size:11.5px;color:#334155;}
+.vt-log-table tr:nth-child(even) td{background:#f8fafc;}
+.vt-log-table tr:hover td{background:#eff6ff;}
+.vt-badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:9.5px;font-weight:700;}
+.vt-badge.sp{background:#dcfce7;color:#166534;}.vt-badge.local{background:#fef9c3;color:#854d0e;}
+.vt-setup-box{background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:18px 22px;margin-bottom:16px;}
+.vt-setup-box h3{font-size:13px;color:#0c4a6e;margin-bottom:8px;}
+.vt-setup-box ol{padding-left:20px;font-size:11.5px;color:#0369a1;line-height:1.8;}
+.vt-setup-box code{background:#e0f2fe;padding:2px 6px;border-radius:4px;font-size:10.5px;font-family:'Consolas',monospace;}
+.vt-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;}
+.vt-stat{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:14px;text-align:center;border-top:4px solid #00B5B8;}
+.vt-stat-val{font-size:22px;font-weight:800;color:#1B3D6E;}
+.vt-stat-lbl{font-size:9.5px;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-top:4px;}
+.vt-export-btn{background:#1B3D6E;color:#fff;border:none;padding:8px 18px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;transition:all .2s;}
+.vt-export-btn:hover{background:#0d2444;}
+
+/* ════ MOBILE SIDEBAR TOGGLE ════ */
+#sidebar.mobile-open{display:flex!important;position:fixed;z-index:200;width:225px;box-shadow:5px 0 20px rgba(0,0,0,.3);}
+
+/* ════ RESPONSIVE: Desktop 1200+ ════ */
+@media(min-width:1200px){.kpi-grid{grid-template-columns:repeat(4,1fr);}}
+
+/* ════ RESPONSIVE: Laptop 900-1200 ════ */
+@media(max-width:1200px){.kpi-grid{grid-template-columns:repeat(3,1fr);}.three-col{grid-template-columns:1fr 1fr;}}
+
+/* ════ RESPONSIVE: Tablet 600-900 ════ */
+@media(max-width:900px){
+  #sidebar{display:none;}
+  #main{margin-left:0;}
+  .two-col,.three-col{grid-template-columns:1fr;}
+  .kpi-grid{grid-template-columns:repeat(2,1fr);}
+  .vt-stats{grid-template-columns:repeat(2,1fr);}
+  .tbl{font-size:10.5px;}
+  .tbl th,.tbl td{padding:5px 6px;}
+  .page{padding:14px 16px 30px;}
+  .ph{font-size:18px;}
+  .bar-label{width:90px;font-size:9.5px;}
+  .timeline{grid-template-columns:repeat(2,1fr);gap:14px;}
+  .tl-line{display:none;}
+  #topbar{padding:0 14px;}
+  body{display:block;}
+  #menu-toggle{display:block!important;}
+}
+
+/* ════ RESPONSIVE: Mobile <600 ════ */
+@media(max-width:600px){
+  #sidebar{display:none;}
+  #main{margin-left:0;}
+  .two-col,.three-col{grid-template-columns:1fr;}
+  .kpi-grid{grid-template-columns:1fr 1fr;}
+  .vt-stats{grid-template-columns:1fr 1fr;}
+  .page{padding:10px 12px 24px;}
+  .ph{font-size:16px;}
+  .ps{font-size:10.5px;}
+  .card-hdr{font-size:11px;padding:8px 12px;}
+  .tbl{font-size:10px;}
+  .tbl th,.tbl td{padding:4px 5px;}
+  .bar-label{width:70px;font-size:9px;}
+  .bar-fill{font-size:9px;padding-left:5px;}
+  .kpi{padding:10px 12px;}
+  .kpi-val{font-size:16px;}
+  .kpi-lbl{font-size:8.5px;}
+  .timeline{grid-template-columns:1fr;gap:12px;}
+  .tl-line{display:none;}
+  .wf-label{width:80px;font-size:10px;}
+  #modal-dialog{width:98%;max-height:92vh;border-radius:8px;}
+  .modal-hdr{padding:14px;font-size:14px;}
+  .modal-body{padding:12px;}
+  .modal-table{font-size:10px;}
+  .insight-box{padding:10px;font-size:10.5px;}
+  #topbar{height:44px;padding:0 12px;}
+  #pg-title{font-size:13px;}
+  .topbar-meta{font-size:9px;}
+  .alert{font-size:10.5px;padding:7px 10px;}
+}
+
+/* ════ RESPONSIVE: Very small mobile <400 ════ */
+@media(max-width:400px){
+  .kpi-grid{grid-template-columns:1fr;}
+  .vt-stats{grid-template-columns:1fr;}
+  .kpi-val{font-size:15px;}
+  .tbl{font-size:9px;}
+  .tbl th,.tbl td{padding:3px 4px;}
+  .bar-label{width:55px;font-size:8px;}
+}
+
+/* ════ RESPONSIVE: Print ════ */
+@media print{
+  #sidebar{display:none;}
+  #main{margin-left:0;}
+  .page{display:block!important;page-break-after:always;}
+  .alert{border:1px solid #ccc;}
+  #topbar{position:static;box-shadow:none;}
+  .drilldown{border-bottom:none;color:inherit;}
+}
+</style>
+</head>
+<body>
+
+<nav id="sidebar">
+<div class="logo-area">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 255 58" height="46" width="210">
+  <rect x="0" y="3" width="50" height="50" rx="4" fill="#00B5B8"/>
+  <text x="25" y="36" font-family="Arial Black,Arial" font-weight="900" font-size="24" fill="white" text-anchor="middle">AH</text>
+  <text x="58" y="24" font-family="Arial" font-weight="700" font-size="12.5" fill="#1B3D6E">Al-Holoul</text>
+  <text x="58" y="40" font-family="Arial" font-size="10.5" fill="#1B3D6E">Oil Services</text>
+  <line x1="143" y1="7" x2="143" y2="50" stroke="#ccc" stroke-width="1"/>
+  <circle cx="165" cy="28" r="20" fill="none" stroke="#1B3D6E" stroke-width="2.5"/>
+  <circle cx="165" cy="28" r="13" fill="none" stroke="#1B3D6E" stroke-width="1.2"/>
+  <text x="165" y="33" font-family="Arial" font-weight="900" font-size="12" fill="#1B3D6E" text-anchor="middle">O</text>
+  <text x="191" y="22" font-family="Arial" font-size="7.5" fill="#888">subsidiary of</text>
+  <text x="191" y="36" font-family="Arial Black,Arial" font-weight="900" font-size="12" fill="#1B3D6E">AL MAJAL</text>
+</svg>
+</div>
+
+<div class="nav-group">
+  <div class="nav-label">Overview</div>
+  <div class="nav-item" onclick="show('exec',this)"><span>📋</span>Executive Summary</div>
+  <div class="nav-item active" onclick="show('dashboard',this)"><span>🏠</span>Dashboard</div>
+  <div class="nav-item" onclick="show('ratios',this)"><span>📐</span>Financial Ratios</div>
+</div>
+<div class="nav-divider"></div>
+<div class="nav-group">
+  <div class="nav-label">Financial Statements</div>
+  <div class="nav-item" onclick="show('pnl',this)"><span>📊</span>Income Statement</div>
+  <div class="nav-item" onclick="show('bs',this)"><span>⚖️</span>Balance Sheet</div>
+  <div class="nav-item" onclick="show('cf',this)"><span>💧</span>Cash Flow</div>
+  <div class="nav-item" onclick="show('analysis',this)"><span>📈</span>Performance Analysis</div>
+</div>
+<div class="nav-divider"></div>
+<div class="nav-group">
+  <div class="nav-label">Working Capital</div>
+  <div class="nav-item" onclick="show('ar',this)"><span>🟢</span>AR Aging</div>
+  <div class="nav-item" onclick="show('ap',this)"><span>🔴</span>AP Aging</div>
+</div>
+<div class="nav-divider"></div>
+<div class="nav-group">
+  <div class="nav-label">Detail Schedules</div>
+  <div class="nav-item" onclick="show('revd',this)"><span>🧾</span>Revenue Detail</div>
+  <div class="nav-item" onclick="show('cogsd',this)"><span>🔩</span>COGS Detail</div>
+  <div class="nav-item" onclick="show('sgad',this)"><span>🏢</span>SG&amp;A Detail</div>
+</div>
+<div class="nav-divider"></div>
+<div class="nav-group">
+  <div class="nav-label">Assets</div>
+  <div class="nav-item" onclick="show('fa',this)"><span>🏗️</span>Fixed Assets</div>
+  <div class="nav-item" onclick="show('stock',this)"><span>📦</span>Stock / Inventory</div>
+</div>
+<div style="padding:12px 15px;margin-top:auto;font-size:9px;color:#5b8fba;border-top:1px solid rgba(255,255,255,.1);">Al Holoul Framework v3.1 · Feb 2026</div>
+</nav>
+
+<div id="main">
+<div id="topbar">
+  <div style="display:flex;align-items:center;gap:10px;">
+    <button id="menu-toggle" onclick="document.getElementById('sidebar').classList.toggle('mobile-open')" style="display:none;background:none;border:none;color:#fff;font-size:22px;cursor:pointer;padding:0 8px 0 0;">☰</button>
+    <h2 id="pg-title">Executive Dashboard</h2>
+    <span style="background:#00B5B8;color:#fff;padding:2px 10px;border-radius:20px;font-size:10px;font-weight:700;">Feb 2026</span>
+  </div>
+  <div class="topbar-meta">Al Holoul Oil Services · Iraq · All figures in USD</div>
+</div>
+
+<!-- ════════ EXECUTIVE SUMMARY ════════ -->
+<div id="page-exec" class="page">
+  <div class="ph">Executive Summary</div>
+  <div class="ps">Al Holoul Oil Services — Iraq · Subsidiary of Al Majal Group · Reporting Period: Jan–Feb 2026 · CONFIDENTIAL</div>
+
+  <!-- Top header strip -->
+  <div style="background:linear-gradient(135deg,#1B3D6E,#0d2444);border-radius:12px;padding:20px 26px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;">
+    <div>
+      <div style="font-size:9px;color:#7FBCD2;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:4px;">Financial Intelligence Report · February 2026</div>
+      <div style="font-size:20px;font-weight:800;color:#fff;margin-bottom:2px;">Al Holoul Oil Services</div>
+      <div style="font-size:11px;color:#90bcd8;">Iraq · Oilfield Services · Fishing Tools · Wellbore Clean-Out · Downhole Services</div>
+    </div>
+    <div style="display:flex;gap:10px;">
+      <div style="background:rgba(0,181,184,.18);border:1px solid rgba(0,181,184,.5);border-radius:9px;padding:11px 16px;text-align:center;">
+        <div style="font-size:8.5px;color:#00B5B8;text-transform:uppercase;letter-spacing:.5px;">YTD Revenue</div>
+        <div class="drilldown" onclick="showDrilldown('ytdRevenue')" style="font-size:20px;font-weight:800;color:#fff;margin:2px 0;cursor:pointer;border:none;background:transparent;padding:0;">$228,540</div>
+        <div style="font-size:9px;color:#4ade80;">▲ 63.4% GP Margin</div>
+      </div>
+      <div style="background:rgba(220,38,38,.18);border:1px solid rgba(220,38,38,.5);border-radius:9px;padding:11px 16px;text-align:center;">
+        <div style="font-size:8.5px;color:#fca5a5;text-transform:uppercase;letter-spacing:.5px;">Cash (Feb-26)</div>
+        <div class="drilldown" onclick="showDrilldown('totalCash')" style="font-size:20px;font-weight:800;color:#fff;margin:2px 0;cursor:pointer;border:none;">$15,514</div>
+        <div style="font-size:9px;color:#fca5a5;">⚠ Negative Mar-26</div>
+      </div>
+      <div style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);border-radius:9px;padding:11px 16px;text-align:center;">
+        <div style="font-size:8.5px;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;">Total Assets</div>
+        <div class="drilldown" onclick="showDrilldown('totalAssets')" style="font-size:20px;font-weight:800;color:#fff;margin:2px 0;cursor:pointer;border:none;">$4.94M</div>
+        <div style="font-size:9px;color:#94a3b8;">FA $1.7M · Stock $2.4M</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Row 1: Waterfall + Scorecard -->
+  <div style="display:grid;grid-template-columns:1.15fr 1fr;gap:15px;margin-bottom:15px;">
+
+    <!-- P&L Waterfall -->
+    <div class="card">
+      <div class="card-hdr">P&amp;L Waterfall — YTD February 2026</div>
+      <div class="card-body" style="padding:16px;">
+        <div class="wf-row"><div class="wf-label" style="color:#1B3D6E;font-weight:700;">Revenue</div><div class="wf-track"><div class="wf-bar" style="width:100%;background:#1B3D6E;"><span>$228,540 · 100%</span></div></div></div>
+        <div class="wf-row"><div class="wf-label" style="color:#dc2626;">Less: COGS</div><div class="wf-track"><div class="wf-bar" style="width:36.6%;background:#ef4444;"><span>($83,603)</span></div></div></div>
+        <div class="wf-row"><div class="wf-label" style="color:#166534;font-weight:700;">= Gross Profit</div><div class="wf-track" style="background:#dcfce7;"><div class="wf-bar" style="width:63.4%;background:#16a34a;"><span class="drilldown" onclick="showDrilldown('grossProfit')" style="cursor:pointer;border-bottom:2px dashed;padding:0 2px;">$144,937 · 63.4%</span></div></div></div>
+        <div class="wf-row"><div class="wf-label" style="color:#92400e;">Less: SG&amp;A</div><div class="wf-track"><div class="wf-bar" style="width:76.3%;background:#f59e0b;"><span>($174,415) · 76.3%</span></div></div></div>
+        <div class="wf-row"><div class="wf-label" style="color:#dc2626;">= EBITDA</div><div class="wf-track" style="background:#fee2e2;"><div class="wf-bar" style="width:9.8%;background:#dc2626;min-width:60px;"><span class="drilldown" onclick="showDrilldown('ebitda')" style="cursor:pointer;border-bottom:2px dashed;padding:0 2px;">–$22K</span></div></div></div>
+        <div class="wf-row"><div class="wf-label" style="color:#64748b;">Less: Depr.</div><div class="wf-track"><div class="wf-bar" style="width:42.9%;background:#94a3b8;"><span>($98,038) · non-cash</span></div></div></div>
+        <div class="wf-row"><div class="wf-label" style="color:#991b1b;font-weight:700;">= Net Loss</div><div class="wf-track" style="background:#fee2e2;border:2px solid #dc2626;border-radius:4px;"><div class="wf-bar" style="width:100%;background:transparent;padding-left:10px;"><span class="drilldown" onclick="showDrilldown('netLoss')" style="color:#991b1b;font-weight:800;font-size:11.5px;cursor:pointer;border-bottom:2px dashed;">($136,514) · –59.7% margin</span></div></div></div>
+      </div>
+    </div>
+
+    <!-- Scorecard Table -->
+    <div class="card">
+      <div class="card-hdr">KPI Scorecard <span>FY 2025 vs YTD 2026</span></div>
+      <div class="card-body">
+        <table class="tbl">
+          <thead><tr><th style="text-align:left;">Metric</th><th>FY 2025</th><th>YTD 2026</th><th>Trend</th></tr></thead>
+          <tbody>
+            <tr><td style="font-weight:600;">Revenue</td><td>$909,221</td><td style="font-weight:700;">$228,540</td><td class="pos up">↑</td></tr>
+            <tr class="alt"><td style="font-weight:600;">GP Margin</td><td>53.3%</td><td style="font-weight:700;color:#16a34a;">63.4% ✓</td><td class="up">↑↑</td></tr>
+            <tr><td style="font-weight:600;">EBITDA Margin</td><td style="color:#dc2626;">–43.3%</td><td style="font-weight:700;color:#d97706;">–9.8%</td><td class="up">↑</td></tr>
+            <tr class="alt"><td style="font-weight:600;">Net Margin</td><td style="color:#dc2626;">–115.0%</td><td style="font-weight:700;color:#dc2626;">–59.7%</td><td class="up">↑</td></tr>
+            <tr><td style="font-weight:600;">DSO (days)</td><td>155d</td><td style="font-weight:700;color:#d97706;">116d</td><td class="up">↑</td></tr>
+            <tr class="alt"><td style="font-weight:600;">Current Ratio</td><td>5.29x</td><td style="font-weight:700;color:#16a34a;">4.79x</td><td class="flat">→</td></tr>
+            <tr><td style="font-weight:600;">SG&amp;A / Revenue</td><td style="color:#dc2626;">96.7%</td><td style="font-weight:700;color:#d97706;">76.3%</td><td class="up">↑</td></tr>
+            <tr class="alt"><td style="font-weight:600;">Cash Balance</td><td>$69,618</td><td style="font-weight:700;color:#dc2626;">$15,514</td><td class="dn">↓</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Row 2: RAG + Revenue bars + Cash bars -->
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:15px;margin-bottom:15px;">
+
+    <!-- RAG Status -->
+    <div class="card">
+      <div class="card-hdr">RAG Risk Status</div>
+      <div class="card-body" style="padding:12px 14px;">
+        <div class="rag-item" style="background:#fef2f2;border-left:4px solid #dc2626;">
+          <div class="rag-dot" style="background:#dc2626;"></div>
+          <div><div class="rag-title" style="color:#991b1b;">Cash Depletion</div><div class="rag-sub" style="color:#dc2626;">Goes negative March 2026 · Collect Oiltec $134K</div></div>
+        </div>
+        <div class="rag-item" style="background:#fef2f2;border-left:4px solid #dc2626;">
+          <div class="rag-dot" style="background:#dc2626;"></div>
+          <div><div class="rag-title" style="color:#991b1b;">Innovex AP $432,221</div><div class="rag-sub" style="color:#dc2626;">61–90 day bucket · 88% of total AP</div></div>
+        </div>
+        <div class="rag-item" style="background:#fefce8;border-left:4px solid #f59e0b;">
+          <div class="rag-dot" style="background:#f59e0b;"></div>
+          <div><div class="rag-title" style="color:#92400e;">DSO 116 Days</div><div class="rag-sub" style="color:#d97706;">Benchmark 30–60d · Tighten payment terms</div></div>
+        </div>
+        <div class="rag-item" style="background:#fefce8;border-left:4px solid #f59e0b;">
+          <div class="rag-dot" style="background:#f59e0b;"></div>
+          <div><div class="rag-title" style="color:#92400e;">SG&amp;A 76% of Revenue</div><div class="rag-sub" style="color:#d97706;">Target &lt;50% · Salaries + warehouse main drivers</div></div>
+        </div>
+        <div class="rag-item" style="background:#fefce8;border-left:4px solid #f59e0b;">
+          <div class="rag-dot" style="background:#f59e0b;"></div>
+          <div><div class="rag-title" style="color:#92400e;">Excess Inventory $2.7M</div><div class="rag-sub" style="color:#d97706;">~5,173 inv. days · Review slow-moving items</div></div>
+        </div>
+        <div class="rag-item" style="background:#f0fdf4;border-left:4px solid #16a34a;">
+          <div class="rag-dot" style="background:#16a34a;"></div>
+          <div><div class="rag-title" style="color:#166534;">GP Margin 63.4% — Record High</div><div class="rag-sub" style="color:#16a34a;">Best performance in company history ✓</div></div>
+        </div>
+        <div class="rag-item" style="background:#f0fdf4;border-left:4px solid #16a34a;">
+          <div class="rag-dot" style="background:#16a34a;"></div>
+          <div><div class="rag-title" style="color:#166534;">New Clients: TotalEnergies + Anton Oil</div><div class="rag-sub" style="color:#16a34a;">Diversification from Oiltec/SLB concentration ✓</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Revenue Visual -->
+    <div class="card">
+      <div class="card-hdr">Revenue vs Gross Profit <span>By Period</span></div>
+      <div class="card-body" style="padding:14px;">
+        <div style="display:flex;flex-direction:column;gap:9px;">
+          <div style="font-size:9.5px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px;">Revenue</div>
+          <div class="bar-row"><div class="bar-label">2023</div><div class="bar-track"><div class="bar-fill" style="width:24.5%;background:#94a3b8;">$223K</div></div></div>
+          <div class="bar-row"><div class="bar-label">2024</div><div class="bar-track"><div class="bar-fill" style="width:15.5%;background:#94a3b8;">$141K</div></div></div>
+          <div class="bar-row"><div class="bar-label">FY 2025</div><div class="bar-track"><div class="bar-fill" style="width:100%;background:#1B3D6E;">$909K</div></div></div>
+          <div class="bar-row"><div class="bar-label">Jan-26</div><div class="bar-track"><div class="bar-fill" style="width:11.6%;background:#00B5B8;">$106K</div></div></div>
+          <div class="bar-row"><div class="bar-label">Feb-26</div><div class="bar-track"><div class="bar-fill" style="width:13.5%;background:#00B5B8;">$123K</div></div></div>
+          <div style="font-size:9.5px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-top:6px;margin-bottom:2px;">GP Margin %</div>
+          <div class="bar-row"><div class="bar-label">FY 2025</div><div class="bar-track"><div class="bar-fill" style="width:53.3%;background:#16a34a;">53.3%</div></div></div>
+          <div class="bar-row"><div class="bar-label">Jan-26</div><div class="bar-track"><div class="bar-fill" style="width:53.7%;background:#16a34a;">53.7%</div></div></div>
+          <div class="bar-row"><div class="bar-label" style="color:#166534;font-weight:700;">Feb-26 ★</div><div class="bar-track"><div class="bar-fill" style="width:71.8%;background:#15803d;">71.8% RECORD</div></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cash + AR/AP -->
+    <div class="card">
+      <div class="card-hdr">Cash Burn &amp; Working Capital</div>
+      <div class="card-body" style="padding:14px;">
+        <div style="font-size:9.5px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Projected Cash Balance</div>
+        <div class="bar-row"><div class="bar-label" style="color:#16a34a;">Feb (Open)</div><div class="bar-track"><div class="bar-fill" style="width:100%;background:#16a34a;">$15,514</div></div></div>
+        <div style="margin:4px 0;font-size:10px;color:#dc2626;font-weight:700;padding-left:130px;">▼ Turns negative after collections</div>
+        <div class="bar-row"><div class="bar-label" style="color:#dc2626;">Mar (Close)</div><div class="bar-track" style="background:#fee2e2;"><div style="height:100%;display:flex;align-items:center;padding-left:9px;"><span style="color:#dc2626;font-weight:700;font-size:11px;">–$934</span></div></div></div>
+        <div class="bar-row"><div class="bar-label" style="color:#dc2626;">Apr (Close)</div><div class="bar-track" style="background:#fee2e2;"><div style="height:100%;display:flex;align-items:center;padding-left:9px;"><span style="color:#dc2626;font-weight:700;font-size:11px;">–$123,567</span></div></div></div>
+        <div class="bar-row"><div class="bar-label" style="color:#dc2626;">May (Close)</div><div class="bar-track" style="background:#fee2e2;"><div style="height:100%;display:flex;align-items:center;padding-left:9px;"><span style="color:#dc2626;font-weight:700;font-size:11px;">–$297,297</span></div></div></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;">
+          <div style="background:#fef2f2;border-radius:7px;padding:8px 10px;text-align:center;">
+            <div style="font-size:9px;color:#991b1b;font-weight:700;text-transform:uppercase;">Total AR</div>
+            <div class="drilldown" onclick="showDrilldown('totalAR')" style="font-size:15px;font-weight:800;color:#dc2626;cursor:pointer;border:none;">$437,888</div>
+            <div style="font-size:9px;color:#dc2626;">53% overdue 121+ days</div>
+          </div>
+          <div style="background:#fef2f2;border-radius:7px;padding:8px 10px;text-align:center;">
+            <div style="font-size:9px;color:#991b1b;font-weight:700;text-transform:uppercase;">Total AP</div>
+            <div class="drilldown" onclick="showDrilldown('totalAP')" style="font-size:15px;font-weight:800;color:#dc2626;cursor:pointer;border:none;">$492,699</div>
+            <div style="font-size:9px;color:#dc2626;">88% Innovex 61-90d</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Row 3: Timeline -->
+  <div class="card">
+    <div class="card-hdr">Action Plan &amp; Key Milestones — H1 2026</div>
+    <div class="card-body" style="padding:18px 24px 22px;">
+      <div class="timeline">
+        <div class="tl-line"></div>
+        <div class="tl-item">
+          <div class="tl-circle" style="background:#dc2626;color:#dc2626;">💰</div>
+          <div class="tl-tag" style="color:#dc2626;">March 2026</div>
+          <div class="tl-head">Collect Oiltec AR</div>
+          <div class="tl-body">$133,975 · 121+ days overdue · Prevent cash going negative</div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-circle" style="background:#f59e0b;color:#f59e0b;">🤝</div>
+          <div class="tl-tag" style="color:#d97706;">Q2 2026</div>
+          <div class="tl-head">Resolve Innovex AP</div>
+          <div class="tl-body">$432K overdue · Negotiate structured payment plan</div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-circle" style="background:#16a34a;color:#16a34a;">📈</div>
+          <div class="tl-tag" style="color:#16a34a;">Q2 2026</div>
+          <div class="tl-head">$150K/Month Revenue</div>
+          <div class="tl-body">EBITDA breakeven target · Grow TotalEnergies &amp; Anton Oil</div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-circle" style="background:#1B3D6E;color:#1B3D6E;">📦</div>
+          <div class="tl-tag" style="color:#1B3D6E;">H2 2026</div>
+          <div class="tl-head">Inventory Review</div>
+          <div class="tl-body">$2.7M stock · Identify slow-moving · Write-down assessment</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="padding:10px 16px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;display:flex;justify-content:space-between;">
+    <div style="font-size:10.5px;color:#64748b;">Finance Dept · Al Holoul Oil Services · Iraq · Subsidiary of Al Majal Group</div>
+    <div style="font-size:10.5px;color:#64748b;font-weight:700;">28 February 2026 · <span style="color:#00B5B8;">CONFIDENTIAL</span></div></div>
+</div>
+
+<!-- ════════ DASHBOARD ════════ -->
+<div id="page-dashboard" class="page active">
+  <div class="ph">Executive Dashboard</div>
+  <div class="ps">Al Holoul Oil Services – Performance Highlights | YTD February 2026</div>
+  <div class="alert danger"><strong>⚠ Cash Alert:</strong> Projected cash turns negative March 2026 (–$934). Collection of 121+ day AR ($233,785) is critical.</div>
+  <div class="kpi-grid">
+    <div class="kpi g"><div class="kpi-lbl">YTD Revenue</div><div class="kpi-val pos drilldown" onclick="showDrilldown('revenue')">$228,540</div><div class="kpi-sub">Jan $105,601 + Feb $122,940</div></div>
+    <div class="kpi g"><div class="kpi-lbl">Gross Profit (YTD)</div><div class="kpi-val pos drilldown" onclick="showDrilldown('grossProfit')">$144,937</div><div class="kpi-sub">GP Margin: 63.4% — record high</div></div>
+    <div class="kpi r"><div class="kpi-lbl">EBITDA (YTD)</div><div class="kpi-val neg drilldown" onclick="showDrilldown('ebitda')">($22,478)</div><div class="kpi-sub">Margin: –9.8%</div></div>
+    <div class="kpi r"><div class="kpi-lbl">Net Loss (YTD)</div><div class="kpi-val neg drilldown" onclick="showDrilldown('netLoss')">($136,514)</div><div class="kpi-sub">Depr. $98K is main driver</div></div>
+    <div class="kpi a"><div class="kpi-lbl">Total AR</div><div class="kpi-val amb drilldown" onclick="showDrilldown('totalAR')">$437,888</div><div class="kpi-sub">121+ overdue: $233,785 (53%)</div></div>
+    <div class="kpi a"><div class="kpi-lbl">Total AP</div><div class="kpi-val amb drilldown" onclick="showDrilldown('totalAP')">$492,699</div><div class="kpi-sub">Innovex 61-90d: $432,221 (88%)</div></div>
+    <div class="kpi b"><div class="kpi-lbl">Fixed Assets (NBV)</div><div class="kpi-val drilldown" onclick="showDrilldown('fixedAssets')">$1,714,850</div><div class="kpi-sub">Monthly depr: $49,019</div></div>
+    <div class="kpi b"><div class="kpi-lbl">Inventory</div><div class="kpi-val drilldown" onclick="showDrilldown('stock')">$2,363,457</div><div class="kpi-sub">+ $361,989 in transit</div></div>
+  </div>
+  <div class="two-col">
+    <div class="card">
+      <div class="card-hdr">Revenue by Period <span>2026 vs 2025</span></div>
+      <div class="card-body" style="padding:14px;">
+        <div style="font-size:9.5px;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:8px;">2026 Monthly</div>
+        <div class="bar-row"><div class="bar-label">January</div><div class="bar-track"><div class="bar-fill" style="width:85.9%;background:#1B3D6E;">$105,601</div></div></div>
+        <div class="bar-row"><div class="bar-label">February ★</div><div class="bar-track"><div class="bar-fill" style="width:100%;background:#00B5B8;">$122,940</div></div></div>
+        <div style="font-size:9.5px;font-weight:700;color:#64748b;text-transform:uppercase;margin:10px 0 8px;">2025 Key Months</div>
+        <div class="bar-row"><div class="bar-label">Oct-25</div><div class="bar-track"><div class="bar-fill" style="width:100%;background:#94a3b8;">$275,582</div></div></div>
+        <div class="bar-row"><div class="bar-label">Aug-25</div><div class="bar-track"><div class="bar-fill" style="width:52.4%;background:#94a3b8;">$144,247</div></div></div>
+        <div class="bar-row"><div class="bar-label">Nov-25</div><div class="bar-track"><div class="bar-fill" style="width:31.7%;background:#94a3b8;">$87,197</div></div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-hdr">AR Aging Breakdown <span>Feb 2026</span></div>
+      <div class="card-body" style="padding:14px;">
+        <div class="bar-row"><div class="bar-label" style="color:#16a34a;">0–30 Days</div><div class="bar-track"><div class="bar-fill" style="width:18.4%;background:#16a34a;">$42,950</div></div></div>
+        <div class="bar-row"><div class="bar-label" style="color:#16a34a;">31–60 Days</div><div class="bar-track"><div class="bar-fill" style="width:14.4%;background:#22c55e;">$33,553</div></div></div>
+        <div class="bar-row"><div class="bar-label" style="color:#d97706;">61–90 Days</div><div class="bar-track"><div class="bar-fill" style="width:51.2%;background:#f59e0b;">$119,425</div></div></div>
+        <div class="bar-row"><div class="bar-label" style="color:#dc2626;">91–120 Days</div><div class="bar-track"><div class="bar-fill" style="width:3.5%;background:#f97316;min-width:55px;">$8,175</div></div></div>
+        <div class="bar-row"><div class="bar-label" style="color:#dc2626;">121+ Days ⚠</div><div class="bar-track"><div class="bar-fill" style="width:100%;background:#dc2626;">$233,785</div></div></div>
+        <div style="margin-top:12px;padding:8px 12px;background:#fef2f2;border-radius:6px;font-size:11px;color:#991b1b;font-weight:600;">Total AR: $437,888 · DSO: 116 days · Benchmark: 30–60 days</div>
+      </div>
+    </div>
+  </div>
+  <div class="two-col">
+    <div class="card">
+      <div class="card-hdr">Client Revenue YTD 2026</div>
+      <div class="card-body"><table class="tbl">
+        <thead><tr><th>Client</th><th>FY 2025</th><th>YTD 2026</th><th>Change</th></tr></thead>
+        <tbody>
+          <tr><td>TotalEnergies</td><td class="dim">—</td><td>$75,010</td><td class="pos">▲ New</td></tr>
+          <tr class="alt"><td>Oiltec</td><td>$141,062</td><td>$73,461</td><td class="neg">▼ –48%</td></tr>
+          <tr><td>SLB</td><td>$152,536</td><td>$15,125</td><td class="neg">▼ –90%</td></tr>
+          <tr class="alt"><td>Anton Oil</td><td class="dim">—</td><td>$33,986</td><td class="pos">▲ New</td></tr>
+          <tr><td>GWDC</td><td>$87,743</td><td>$30,959</td><td class="neg">▼ –65%</td></tr>
+          <tr class="tot"><td><strong>Total</strong></td><td><strong>$909,221</strong></td><td><strong>$228,540</strong></td><td>YTD only</td></tr>
+        </tbody>
+      </table></div>
+    </div>
+    <div class="card">
+      <div class="card-hdr">Key Alerts</div>
+      <div class="card-body" style="padding:14px;">
+        <div class="alert danger" style="margin-bottom:8px;">🔴 Cash negative March 2026 — need AR collection now</div>
+        <div class="alert warn" style="margin-bottom:8px;">🟡 $233,785 AR overdue 121+ days — Oiltec key debtor</div>
+        <div class="alert warn" style="margin-bottom:8px;">🟡 Innovex AP $432,221 in 61-90 day bucket</div>
+        <div class="alert warn" style="margin-bottom:8px;">🟡 Al Majal interco $4,998,316 — quasi-equity</div>
+        <div class="alert ok" style="margin-bottom:8px;">🟢 GP Margin 63.4% — record high in company history</div>
+        <div class="alert info">🔵 SG&amp;A $167K YTD vs $878K FY25 — improving trend</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ FINANCIAL RATIOS ════════ -->
+<div id="page-ratios" class="page">
+  <div class="ph">Financial Ratios</div>
+  <div class="ps">Historical 2022–2025 + Feb 2026 | Best-practice benchmarks | Operational vs Reported view</div>
+  <div class="alert info"><strong>Two-View Liquidity:</strong> Operational excludes $4.998M Al Majal interco (quasi-equity). Reported includes all liabilities.</div>
+  <div class="card">
+    <div class="card-hdr">Liquidity Ratios</div>
+    <div class="card-body"><table class="tbl">
+      <thead><tr><th style="min-width:200px">Ratio</th><th>2023</th><th>2024</th><th>2025</th><th>Feb-26</th><th>Benchmark</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr class="sec"><td colspan="7">▸ OPERATIONAL VIEW (excl. Al Majal interco)</td></tr>
+        <tr><td class="ind">Current Ratio</td><td>102.3x</td><td class="dim">n/a</td><td>5.29x</td><td class="pos">4.79x</td><td>1.5–2.5x</td><td><span class="badge ok">STRONG</span></td></tr>
+        <tr class="alt"><td class="ind">Quick Ratio</td><td class="dim">—</td><td class="dim">—</td><td>0.80x</td><td class="amb">0.75x</td><td>1.0–1.5x</td><td><span class="badge warn">WATCH</span></td></tr>
+        <tr><td class="ind">Cash Ratio</td><td class="dim">—</td><td class="dim">—</td><td>0.09x</td><td class="neg">0.02x</td><td>0.3–0.5x</td><td><span class="badge danger">CRITICAL</span></td></tr>
+        <tr class="alt"><td class="ind">Working Capital</td><td class="dim">—</td><td class="dim">—</td><td class="pos">$2,614K</td><td class="pos">$2,555K</td><td>&gt;$0</td><td><span class="badge ok">POSITIVE</span></td></tr>
+        <tr class="sec"><td colspan="7">▸ REPORTED VIEW (all liabilities)</td></tr>
+        <tr><td class="ind">Current Ratio</td><td class="dim">—</td><td class="dim">—</td><td class="neg">0.56x</td><td class="neg">0.56x</td><td>1.5–2.5x</td><td><span class="badge danger">BELOW 1</span></td></tr>
+        <tr class="alt"><td class="ind">Working Capital</td><td class="dim">—</td><td class="dim">—</td><td class="neg">(–$2,400K)</td><td class="neg">(–$2,444K)</td><td>&gt;$0</td><td><span class="badge danger">NEGATIVE</span></td></tr>
+      </tbody>
+    </table></div>
+  </div>
+  <div class="card">
+    <div class="card-hdr">Profitability Ratios</div>
+    <div class="card-body"><table class="tbl">
+      <thead><tr><th style="min-width:200px">Ratio</th><th>2022</th><th>2023</th><th>2024</th><th>2025</th><th>Jan-26</th><th>Feb-26</th><th>YTD-26</th><th>Benchmark</th></tr></thead>
+      <tbody>
+        <tr><td class="ind">Gross Profit Margin</td><td class="neg">–12.5%</td><td class="pos">56.0%</td><td class="pos">17.5%</td><td class="pos">53.3%</td><td class="pos">53.7%</td><td class="pos">71.8%</td><td class="pos">63.4%</td><td>40–60%</td></tr>
+        <tr class="alt"><td class="ind">EBITDA Margin</td><td class="dim">—</td><td class="dim">—</td><td class="dim">—</td><td class="neg">–43.3%</td><td class="neg">–20.8%</td><td class="neg">–0.4%</td><td class="neg">–9.8%</td><td>10–20%</td></tr>
+        <tr><td class="ind">Net Profit Margin</td><td class="dim">—</td><td class="dim">—</td><td class="dim">—</td><td class="neg">–115.0%</td><td class="neg">–74.2%</td><td class="neg">–47.3%</td><td class="neg">–59.7%</td><td>5–15%</td></tr>
+        <tr class="alt"><td class="ind">Return on Assets</td><td class="dim">—</td><td class="neg">–25.9%</td><td class="neg">–32.1%</td><td class="neg">–20.9%</td><td class="dim">—</td><td class="dim">—</td><td class="neg">–2.8%*</td><td>5–15%</td></tr>
+        <tr><td class="ind">Asset Turnover</td><td>0.002x</td><td>0.048x</td><td>0.028x</td><td>0.182x</td><td class="dim">—</td><td class="dim">—</td><td>0.046x*</td><td>0.5–1.5x</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+  <div class="card">
+    <div class="card-hdr">Efficiency &amp; Leverage Ratios</div>
+    <div class="card-body"><table class="tbl">
+      <thead><tr><th style="min-width:220px">Ratio</th><th>2023</th><th>2024</th><th>2025</th><th>Feb-26</th><th>Benchmark</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td class="ind">Days Sales Outstanding (DSO)</td><td>224d</td><td>1,001d</td><td>155d</td><td class="amb">116d*</td><td>30–60d</td><td><span class="badge warn">HIGH</span></td></tr>
+        <tr class="alt"><td class="ind">Days Payable Outstanding (DPO)</td><td>3d</td><td>3d</td><td>422d</td><td class="neg">359d*</td><td>30–60d</td><td><span class="badge danger">VERY HIGH</span></td></tr>
+        <tr><td class="ind">Inventory Days</td><td class="dim">—</td><td class="dim">—</td><td>2,016d</td><td class="neg">5,173d*</td><td>30–90d</td><td><span class="badge danger">EXCESS</span></td></tr>
+        <tr class="alt"><td class="ind">Debt-to-Assets (Reported)</td><td>57%</td><td class="neg">113%</td><td class="neg">116%</td><td class="neg">116%</td><td>&lt;50%</td><td><span class="badge danger">OVER-LEVERED</span></td></tr>
+        <tr><td class="ind">Debt-to-Assets (Operational)</td><td class="dim">—</td><td class="dim">—</td><td>16%</td><td class="pos">16%</td><td>&lt;50%</td><td><span class="badge ok">HEALTHY</span></td></tr>
+      </tbody>
+    </table></div>
+  </div>
+  <div class="alert info">* Annualized / estimated from YTD data only.</div>
+</div>
+
+<!-- ════════ INCOME STATEMENT ════════ -->
+<div id="page-pnl" class="page">
+  <div class="ph">Income Statement</div>
+  <div class="ps">Historical Annual 2022–2025 + Monthly 2026 | All figures in USD</div>
+  <div class="card">
+    <div class="card-hdr">Al Holoul Oil Services – Profit &amp; Loss Statement</div>
+    <div class="card-body"><table class="tbl">
+      <thead><tr><th style="min-width:210px">Line Item</th><th>2022</th><th>2023</th><th>2024</th><th>2025</th><th>Jan-26</th><th>Feb-26</th><th>YTD 2026</th></tr></thead>
+      <tbody>
+        <tr class="sec"><td colspan="8">▸ REVENUES</td></tr>
+        <tr><td class="ind">Tools Rental Revenues</td><td>$10,268</td><td>$223,118</td><td>$141,027</td><td>$909,221</td><td>$105,601</td><td>$122,940</td><td>$228,540</td></tr>
+        <tr class="sub"><td><strong>Total Revenues</strong></td><td><strong>$10,268</strong></td><td><strong>$223,118</strong></td><td><strong>$141,027</strong></td><td><strong>$909,221</strong></td><td><strong>$105,601</strong></td><td><strong>$122,940</strong></td><td><strong class="drilldown" onclick="showDrilldown('revenue')">$228,540</strong></td></tr>
+        <tr><td class="ind dim">Growth %</td><td class="dim">—</td><td class="pos">+2,073%</td><td class="neg">–36.8%</td><td class="pos">+544.7%</td><td class="dim">—</td><td class="pos">+16.4% MoM</td><td class="dim">—</td></tr>
+        <tr class="sec"><td colspan="8">▸ COST OF GOODS SOLD</td></tr>
+        <tr><td class="ind">Services</td><td class="dim">—</td><td>$36,974</td><td>$22,002</td><td>$118,751</td><td>$4,049</td><td>$10,775</td><td>$14,824</td></tr>
+        <tr class="alt"><td class="ind">Salaries Cost</td><td>$11,550</td><td>$22,852</td><td>$71,615</td><td>$148,598</td><td>$14,814</td><td>$15,095</td><td>$29,909</td></tr>
+        <tr><td class="ind">Employees Incentive</td><td class="dim">—</td><td class="dim">—</td><td class="dim">—</td><td>$56,911</td><td>$9,432</td><td class="dim">—</td><td>$9,432</td></tr>
+        <tr class="alt"><td class="ind">Accommodation</td><td class="dim">—</td><td class="dim">—</td><td class="dim">—</td><td class="dim">—</td><td>$4,837</td><td>$5,010</td><td>$9,847</td></tr>
+        <tr><td class="ind">Consumables</td><td class="dim">—</td><td>$20,691</td><td>$2,905</td><td>$35,324</td><td>$3,833</td><td>$298</td><td>$4,132</td></tr>
+        <tr class="alt"><td class="ind">Cost of Sales (Items)</td><td class="dim">—</td><td class="dim">—</td><td>$3,388</td><td>$56,683</td><td>$11,936</td><td>$3,140</td><td>$15,076</td></tr>
+        <tr><td class="ind">Vehicle Rental</td><td class="dim">—</td><td>$16,619</td><td>$13,349</td><td>$2,009</td><td class="dim">—</td><td class="dim">—</td><td class="dim">—</td></tr>
+        <tr class="alt"><td class="ind">Freight &amp; Transportation</td><td class="dim">—</td><td>$945</td><td>$1,895</td><td>$5,792</td><td class="dim">—</td><td>$383</td><td>$383</td></tr>
+        <tr><td class="ind">Other COGS</td><td class="dim">—</td><td class="dim">—</td><td class="dim">—</td><td>$568</td><td class="dim">—</td><td class="dim">—</td><td class="dim">—</td></tr>
+        <tr class="sub"><td><strong>Total COGS</strong></td><td><strong>$11,550</strong></td><td><strong>$98,081</strong></td><td><strong>$116,347</strong></td><td><strong>$424,637</strong></td><td><strong>$48,902</strong></td><td><strong>$34,701</strong></td><td><strong class="drilldown" onclick="showDrilldown('totalCOGS')">$83,603</strong></td></tr>
+        <tr class="tot"><td><strong>GROSS PROFIT</strong></td><td class="neg"><strong>($1,282)</strong></td><td><strong>$125,037</strong></td><td><strong>$24,680</strong></td><td><strong>$484,584</strong></td><td><strong>$56,699</strong></td><td><strong>$88,238</strong></td><td><strong class="drilldown" onclick="showDrilldown('grossProfit')">$144,937</strong></td></tr>
+        <tr><td class="ind dim">GP Margin %</td><td class="neg">–12.5%</td><td class="pos">56.0%</td><td class="pos">17.5%</td><td class="pos">53.3%</td><td class="pos">53.7%</td><td class="pos">71.8%</td><td class="pos">63.4%</td></tr>
+        <tr class="sec"><td colspan="8">▸ SG&amp;A EXPENSES</td></tr>
+        <tr><td class="ind">Warehouse Rental</td><td>$154,370</td><td>$270,000</td><td>$270,000</td><td>$172,522</td><td>$16,683</td><td>$16,683</td><td>$33,367</td></tr>
+        <tr class="alt"><td class="ind">Salaries &amp; Bonuses</td><td>$43,592</td><td>$267,697</td><td>$484,287</td><td>$273,610</td><td>$27,165</td><td>$46,527</td><td>$73,692</td></tr>
+        <tr><td class="ind">Accommodation (SG&amp;A)</td><td>$13,639</td><td>$77,116</td><td>$104,704</td><td>$98,950</td><td>$4,837</td><td>$5,010</td><td>$9,847</td></tr>
+        <tr class="alt"><td class="ind">Vehicle Rental (SG&amp;A)</td><td>$773</td><td>$16,619</td><td>$13,349</td><td>$47,218</td><td>$8,929</td><td>$8,929</td><td>$17,857</td></tr>
+        <tr><td class="ind">Professional Fees</td><td>$46,677</td><td>$13,077</td><td>$24,985</td><td>$25,353</td><td>$1,835</td><td class="dim">—</td><td>$1,835</td></tr>
+        <tr class="alt"><td class="ind">Freight (SG&amp;A)</td><td class="dim">—</td><td>$945</td><td>$1,895</td><td>$91,627</td><td>$12,486</td><td>$273</td><td>$12,759</td></tr>
+        <tr><td class="ind">Visa &amp; Work Permits</td><td class="dim">—</td><td>$8,008</td><td>$32,794</td><td>$22,026</td><td>$91</td><td>$2,875</td><td>$2,966</td></tr>
+        <tr class="alt"><td class="ind">Travel Expenses</td><td>$1,361</td><td>$33,107</td><td>$35,705</td><td>$25,999</td><td class="dim">—</td><td>$648</td><td>$648</td></tr>
+        <tr><td class="ind">Internet &amp; Communications</td><td>$5,151</td><td>$8,842</td><td>$13,169</td><td>$12,248</td><td>$213</td><td>$1,172</td><td>$1,385</td></tr>
+        <tr class="alt"><td class="ind">Security</td><td class="dim">—</td><td>$1,013</td><td>$3,302</td><td>$11,596</td><td>$2,700</td><td>$2,025</td><td>$4,725</td></tr>
+        <tr><td class="ind">Bank Charges</td><td class="dim">—</td><td>$242</td><td>$3,285</td><td>$10,726</td><td>$1,785</td><td>$1,573</td><td>$3,358</td></tr>
+        <tr class="alt"><td class="ind">Income Tax (CIT &amp; PIT)</td><td>$363</td><td>$15,618</td><td>$13,447</td><td>$77,284</td><td>$8,976</td><td>$10,450</td><td>$19,426</td></tr>
+        <tr><td class="ind">Other SG&amp;A</td><td>$4,984</td><td>$37,361</td><td>$50,385</td><td>$51,641</td><td>$783</td><td>$1,172</td><td>$1,955</td></tr>
+        <tr class="sub"><td><strong>Total SG&amp;A</strong></td><td><strong>$270,940</strong></td><td><strong>$755,635</strong></td><td><strong>$1,064,078</strong></td><td><strong>$906,645</strong></td><td><strong>$78,078</strong></td><td><strong>$96,337</strong></td><td><strong class="drilldown" onclick="showDrilldown('totalSGA')">$174,415</strong></td></tr>
+        <tr class="tot"><td><strong>EBITDA</strong></td><td class="neg"><strong>($272,222)</strong></td><td class="neg"><strong>($630,598)</strong></td><td class="neg"><strong>($1,039,398)</strong></td><td class="neg"><strong>($422,061)</strong></td><td class="neg"><strong>($21,379)</strong></td><td class="neg"><strong>($8,099)</strong></td><td class="neg"><strong class="drilldown" onclick="showDrilldown('ebitda')">($29,478)</strong></td></tr>
+        <tr class="sec"><td colspan="8">▸ BELOW THE LINE</td></tr>
+        <tr><td class="ind">Depreciation</td><td class="dim">—</td><td>$567,998</td><td>$571,348</td><td>$588,560</td><td>$49,019</td><td>$49,019</td><td class="drilldown" onclick="showDrilldown('depreciation')">$98,038</td></tr>
+        <tr class="alt"><td class="ind">Expected Credit Loss</td><td class="dim">—</td><td>$2,360</td><td class="dim">—</td><td class="dim">—</td><td class="dim">—</td><td class="dim">—</td><td class="dim">—</td></tr>
+        <tr class="tot"><td><strong>NET PROFIT / (LOSS)</strong></td><td class="neg"><strong>($272,222)</strong></td><td class="neg"><strong>($1,200,956)</strong></td><td class="neg"><strong>($1,610,746)</strong></td><td class="neg"><strong>($1,010,621)</strong></td><td class="neg"><strong>($70,398)</strong></td><td class="neg"><strong>($57,118)</strong></td><td class="neg"><strong class="drilldown" onclick="showDrilldown('netLoss')">($127,516)</strong></td></tr>
+        <tr><td class="ind dim">Net Margin %</td><td class="dim">—</td><td class="dim">—</td><td class="dim">—</td><td class="neg">–111.1%</td><td class="neg">–66.7%</td><td class="neg">–46.5%</td><td class="neg">–55.8%</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+</div>
+
+<!-- ════════ BALANCE SHEET ════════ -->
+<div id="page-bs" class="page">
+  <div class="ph">Balance Sheet</div>
+  <div class="ps">As at 28 February 2026 | Comparative: 2022 · 2023 · 2024 · 2025 | All figures in USD</div>
+  <div class="two-col">
+    <div class="card">
+      <div class="card-hdr">Assets</div>
+      <div class="card-body"><table class="tbl">
+        <thead><tr><th>Line Item</th><th>2022</th><th>2023</th><th>2024</th><th>2025</th><th>Feb-26</th></tr></thead>
+        <tbody>
+          <tr class="sec"><td colspan="6">▸ CURRENT ASSETS</td></tr>
+          <tr><td class="ind">Cash at Hand</td><td class="dim">—</td><td>$2,029</td><td>$423</td><td>$35</td><td>$432</td></tr>
+          <tr class="alt"><td class="ind">Cash at Bank</td><td class="dim">—</td><td>$40,234</td><td>$2,800</td><td>$69,583</td><td>$15,083</td></tr>
+          <tr><td class="ind"><strong>Total Cash</strong></td><td>—</td><td><strong>$42,263</strong></td><td><strong>$3,223</strong></td><td><strong>$69,618</strong></td><td><strong class="drilldown" onclick="showDrilldown('totalCash')">$15,514</strong></td></tr>
+          <tr class="alt"><td class="ind">Accounts Receivable</td><td class="dim">—</td><td>$121,651</td><td class="neg">($2,886)</td><td>$389,041</td><td class="drilldown" onclick="showDrilldown('totalAR')">$437,888</td></tr>
+          <tr><td class="ind">Expected Credit Loss</td><td class="dim">—</td><td>($2,360)</td><td>($2,360)</td><td>($2,360)</td><td>($2,360)</td></tr>
+          <tr class="alt"><td class="ind">Performance Bonds</td><td class="dim">—</td><td class="dim">—</td><td>$12,000</td><td>$20,000</td><td>$40,000</td></tr>
+          <tr><td class="ind">Stock (Inventory)</td><td class="dim">—</td><td>$2,146,576</td><td class="dim">—</td><td>$2,344,243</td><td class="drilldown" onclick="showDrilldown('stock')">$2,363,457</td></tr>
+          <tr class="alt"><td class="ind">Stock in Transit</td><td class="dim">—</td><td class="dim">—</td><td class="dim">—</td><td>$361,989</td><td>$361,989</td></tr>
+          <tr><td class="ind">WHT Receivable</td><td class="dim">—</td><td>$2,660</td><td>$7,204</td><td>$9,454</td><td>$12,812</td></tr>
+          <tr class="sub"><td><strong>Total Current Assets</strong></td><td>—</td><td><strong>$2,343,161</strong></td><td><strong>$20,067</strong></td><td><strong>$3,191,985</strong></td><td><strong>$3,229,301</strong></td></tr>
+          <tr class="sec"><td colspan="6">▸ NON-CURRENT ASSETS</td></tr>
+          <tr><td class="ind">Fixed Assets (NBV)</td><td>$4,941,679</td><td>$2,291,622</td><td class="dim">—</td><td>$1,805,371</td><td class="drilldown" onclick="showDrilldown('fixedAssets')">$1,714,850</td></tr>
+          <tr class="tot"><td><strong>TOTAL ASSETS</strong></td><td><strong>$4,941,679</strong></td><td><strong>$4,634,783</strong></td><td><strong>$20,067</strong></td><td><strong>$4,997,356</strong></td><td><strong>$4,944,151</strong></td></tr>
+        </tbody>
+      </table></div>
+    </div>
+    <div class="card">
+      <div class="card-hdr">Liabilities &amp; Equity</div>
+      <div class="card-body"><table class="tbl">
+        <thead><tr><th>Line Item</th><th>2022</th><th>2023</th><th>2024</th><th>2025</th><th>Feb-26</th></tr></thead>
+        <tbody>
+          <tr class="sec"><td colspan="6">▸ CURRENT LIABILITIES</td></tr>
+          <tr><td class="ind">Accounts Payable</td><td class="dim">—</td><td>$785</td><td>$7,423</td><td>$490,845</td><td class="drilldown" onclick="showDrilldown('totalAP')">$492,699</td></tr>
+          <tr class="alt"><td class="ind">Al Majal (Interco)</td><td>$1,109,328</td><td>$1,608,978</td><td>$3,534,950</td><td>$5,014,636</td><td class="drilldown" onclick="showDrilldown('alMajal')">$4,998,316</td></tr>
+          <tr><td class="ind">Other Interco (AMTS/AMLS)</td><td class="dim">—</td><td>$10,921</td><td>$18,288</td><td>$55,048</td><td>$83,879</td></tr>
+          <tr class="alt"><td class="ind">Accrued Salaries</td><td class="dim">—</td><td class="dim">—</td><td>$26,152</td><td>$35,593</td><td>$85,112</td></tr>
+          <tr><td class="ind">Income Tax (CIT + PIT)</td><td>$363</td><td>$15,618</td><td>$142</td><td>$77,284</td><td>$96,710</td></tr>
+          <tr class="sub"><td><strong>Total Liabilities</strong></td><td><strong>$1,765,626</strong></td><td><strong>$2,659,685</strong></td><td><strong>$3,598,955</strong></td><td><strong>$5,673,406</strong></td><td><strong>$5,756,717</strong></td></tr>
+          <tr class="sec"><td colspan="6">▸ EQUITY</td></tr>
+          <tr><td class="ind">Share Capital</td><td>$3,448,276</td><td>$3,448,276</td><td>$3,448,276</td><td>$3,448,276</td><td>$3,448,276</td></tr>
+          <tr class="alt"><td class="ind">Retained Earnings</td><td class="dim">—</td><td>($272,222)</td><td>($1,470,818)</td><td>($3,078,708)</td><td>($4,124,327)</td></tr>
+          <tr><td class="ind">Net Income (Year)</td><td>($272,222)</td><td>($1,198,596)</td><td class="neg">($1,607,890)</td><td class="neg">($1,045,619)</td><td class="neg">($136,514)</td></tr>
+          <tr class="sub"><td><strong>Total Equity</strong></td><td class="dim">—</td><td class="dim">—</td><td><strong>$369,568</strong></td><td class="neg"><strong>(–$676,051)</strong></td><td class="neg"><strong class="drilldown" onclick="showDrilldown('totalEquity')">(–$812,565)</strong></td></tr>
+          <tr class="tot"><td><strong>TOTAL LIAB + EQUITY</strong></td><td>—</td><td>—</td><td><strong>$3,968,523</strong></td><td><strong>$4,997,355</strong></td><td><strong>$4,944,152</strong></td></tr>
+        </tbody>
+      </table></div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ CASH FLOW ════════ -->
+<div id="page-cf" class="page">
+  <div class="ph">Cash Flow Projection</div>
+  <div class="ps">13-Week Rolling Forecast | Opening Balance Feb 2026: $15,514</div>
+  <div class="alert danger"><strong>🔴 Critical:</strong> Cash turns negative March 2026 (–$934). Collections from 121+ day AR ($233,785) are the primary lever.</div>
+  <div class="kpi-grid">
+    <div class="kpi b"><div class="kpi-lbl">Opening (Feb)</div><div class="kpi-val drilldown" onclick="showDrilldown('totalCash')">$15,514</div><div class="kpi-sub">Cash at bank + hand</div></div>
+    <div class="kpi r"><div class="kpi-lbl">Mar Closing</div><div class="kpi-val neg">($934)</div><div class="kpi-sub">Net outflow: –$16,448</div></div>
+    <div class="kpi r"><div class="kpi-lbl">Apr Closing</div><div class="kpi-val neg">($123,567)</div><div class="kpi-sub">Burn accelerating</div></div>
+    <div class="kpi r"><div class="kpi-lbl">May Closing</div><div class="kpi-val neg">($297,297)</div><div class="kpi-sub">Critical — requires action</div></div>
+  </div>
+  <div class="card">
+    <div class="card-hdr">Cash Flow Forecast <span>Mar – May 2026</span></div>
+    <div class="card-body"><table class="tbl">
+      <thead><tr><th>Item</th><th>Mar-26</th><th>Apr-26</th><th>May-26</th></tr></thead>
+      <tbody>
+        <tr class="sub"><td><strong>Opening Balance</strong></td><td><strong>$15,514</strong></td><td class="neg"><strong>($934)</strong></td><td class="neg"><strong>($123,567)</strong></td></tr>
+        <tr class="sec"><td colspan="4">▸ INFLOWS</td></tr>
+        <tr><td class="ind">AR Collections</td><td class="drilldown" onclick="showDrilldown('cashCollections')">$233,785</td><td>$127,600</td><td>$76,503</td></tr>
+        <tr class="sub"><td><strong>Total Inflows</strong></td><td><strong>$233,785</strong></td><td><strong>$127,600</strong></td><td><strong>$76,503</strong></td></tr>
+        <tr class="sec"><td colspan="4">▸ OUTFLOWS</td></tr>
+        <tr><td class="ind">Payroll</td><td>$45,000</td><td>$45,000</td><td>$45,000</td></tr>
+        <tr class="alt"><td class="ind">AP Payments (Innovex etc.)</td><td>$164,233</td><td>$164,233</td><td>$164,233</td></tr>
+        <tr><td class="ind">Warehouse Rental</td><td>$14,000</td><td>$14,000</td><td>$14,000</td></tr>
+        <tr class="alt"><td class="ind">Accommodation &amp; Utilities</td><td>$12,000</td><td>$12,000</td><td>$12,000</td></tr>
+        <tr><td class="ind">Telecom / Visas / Travel</td><td>$15,000</td><td>$15,000</td><td>$15,000</td></tr>
+        <tr class="sub"><td><strong>Total Outflows</strong></td><td><strong class="drilldown" onclick="showDrilldown('totalOutflows')">$250,233</strong></td><td><strong>$250,233</strong></td><td><strong>$250,233</strong></td></tr>
+        <tr class="tot"><td><strong>Net Cash Flow</strong></td><td class="neg"><strong>(–$16,448)</strong></td><td class="neg"><strong>(–$122,633)</strong></td><td class="neg"><strong>(–$173,730)</strong></td></tr>
+        <tr class="tot"><td><strong>Closing Balance</strong></td><td class="neg"><strong>(–$934)</strong></td><td class="neg"><strong>(–$123,567)</strong></td><td class="neg"><strong>(–$297,297)</strong></td></tr>
+      </tbody>
+    </table></div>
+  </div>
+</div>
+
+<!-- ════════ PERFORMANCE ANALYSIS ════════ -->
+<div id="page-analysis" class="page">
+  <div class="ph">Performance Analysis</div>
+  <div class="ps">Year-over-year and monthly trend | February 2026</div>
+  <div class="two-col">
+    <div class="card">
+      <div class="card-hdr">YoY P&amp;L Summary</div>
+      <div class="card-body"><table class="tbl">
+        <thead><tr><th>Metric</th><th>2023</th><th>2024</th><th>2025</th><th>YTD 26</th></tr></thead>
+        <tbody>
+          <tr><td>Revenue</td><td>$223,118</td><td>$141,027</td><td>$909,221</td><td>$228,540</td></tr>
+          <tr class="alt"><td>Gross Profit</td><td>$125,037</td><td>$24,680</td><td>$484,584</td><td>$144,937</td></tr>
+          <tr><td>GP Margin</td><td class="pos">56.0%</td><td class="pos">17.5%</td><td class="pos">53.3%</td><td class="pos">63.4%</td></tr>
+          <tr class="alt"><td>EBITDA</td><td class="neg">($631K)</td><td class="neg">($1,039K)</td><td class="neg">($422K)</td><td class="neg">($29K)</td></tr>
+          <tr><td>Depreciation</td><td>$567,998</td><td>$571,348</td><td>$588,560</td><td>$98,038</td></tr>
+          <tr class="alt"><td>Net Loss</td><td class="neg">($1,201K)</td><td class="neg">($1,611K)</td><td class="neg">($1,011K)</td><td class="neg">($128K)</td></tr>
+        </tbody>
+      </table></div>
+    </div>
+    <div class="card">
+      <div class="card-hdr">Jan vs Feb 2026</div>
+      <div class="card-body"><table class="tbl">
+        <thead><tr><th>Metric</th><th>Jan-26</th><th>Feb-26</th><th>MoM</th></tr></thead>
+        <tbody>
+          <tr><td>Revenue</td><td>$105,601</td><td>$122,940</td><td class="pos">+16.4%</td></tr>
+          <tr class="alt"><td>COGS</td><td>$48,902</td><td>$34,701</td><td class="pos">–29.0%</td></tr>
+          <tr><td>Gross Profit</td><td>$56,699</td><td>$88,238</td><td class="pos">+55.6%</td></tr>
+          <tr class="alt"><td>GP Margin</td><td class="pos">53.7%</td><td class="pos">71.8%</td><td class="pos">+18.1pp</td></tr>
+          <tr><td>SG&amp;A</td><td>$78,078</td><td>$96,337</td><td class="neg">+23.4%</td></tr>
+          <tr class="alt"><td>Net Loss</td><td class="neg">($70,398)</td><td class="neg">($57,118)</td><td class="pos">+19%</td></tr>
+        </tbody>
+      </table></div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ AR AGING ════════ -->
+<div id="page-ar" class="page">
+  <div class="ph">AR Aging Analysis</div>
+  <div class="ps">Accounts Receivable as at 28 February 2026 | DSO: 116 days | Benchmark: 30–60 days</div>
+  <div class="alert warn"><strong>⚠ Action Required:</strong> $233,785 (53% of AR) overdue 121+ days. Oiltec is the primary debtor. Immediate escalation recommended.</div>
+  <div class="kpi-grid">
+    <div class="kpi g"><div class="kpi-lbl">0–30 Days</div><div class="kpi-val pos">$42,950</div><div class="kpi-sub">9.8% of AR</div></div>
+    <div class="kpi g"><div class="kpi-lbl">31–60 Days</div><div class="kpi-val pos">$33,553</div><div class="kpi-sub">7.7% of AR</div></div>
+    <div class="kpi a"><div class="kpi-lbl">61–90 Days</div><div class="kpi-val amb">$119,425</div><div class="kpi-sub">27.3% of AR</div></div>
+    <div class="kpi r"><div class="kpi-lbl">91–120 Days</div><div class="kpi-val neg">$8,175</div><div class="kpi-sub">1.9% of AR</div></div>
+    <div class="kpi r"><div class="kpi-lbl">121+ Days ⚠</div><div class="kpi-val neg">$233,785</div><div class="kpi-sub">53.4% of AR</div></div>
+    <div class="kpi b"><div class="kpi-lbl">Total AR</div><div class="kpi-val">$437,888</div><div class="kpi-sub">DSO: 116 days</div></div>
+  </div>
+  <div class="two-col">
+    <div class="card">
+      <div class="card-hdr">AR Aging Visual</div>
+      <div class="card-body" style="padding:14px;">
+        <div class="bar-row"><div class="bar-label" style="color:#16a34a;">0–30 Days</div><div class="bar-track"><div class="bar-fill" style="width:18.4%;background:#16a34a;">$42,950</div></div></div>
+        <div class="bar-row"><div class="bar-label" style="color:#22c55e;">31–60 Days</div><div class="bar-track"><div class="bar-fill" style="width:14.4%;background:#22c55e;">$33,553</div></div></div>
+        <div class="bar-row"><div class="bar-label" style="color:#d97706;">61–90 Days</div><div class="bar-track"><div class="bar-fill" style="width:51.2%;background:#f59e0b;">$119,425</div></div></div>
+        <div class="bar-row"><div class="bar-label" style="color:#ea580c;">91–120 Days</div><div class="bar-track"><div class="bar-fill" style="width:3.5%;background:#f97316;min-width:55px;">$8,175</div></div></div>
+        <div class="bar-row"><div class="bar-label" style="color:#dc2626;">121+ Days</div><div class="bar-track"><div class="bar-fill" style="width:100%;background:#dc2626;">$233,785 — CRITICAL</div></div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-hdr">AR by Customer</div>
+      <div class="card-body"><table class="tbl">
+        <thead><tr><th>Customer</th><th>0–30</th><th>31–60</th><th>61–90</th><th>121+</th><th>Total</th></tr></thead>
+        <tbody>
+          <tr><td>TotalEnergies</td><td>$42,950</td><td>$32,060</td><td class="dim">—</td><td class="dim">—</td><td>$75,010</td></tr>
+          <tr class="alt"><td>Oiltec</td><td class="dim">—</td><td class="dim">—</td><td class="dim">—</td><td class="neg">$133,975</td><td class="neg">$133,975</td></tr>
+          <tr><td>GWDC</td><td class="dim">—</td><td class="dim">—</td><td>$30,959</td><td class="dim">—</td><td class="amb">$30,959</td></tr>
+          <tr class="alt"><td>Anton Oil</td><td class="dim">—</td><td class="dim">—</td><td>$20,291</td><td class="dim">—</td><td class="amb">$20,291</td></tr>
+          <tr><td>SLB</td><td class="dim">—</td><td>$1,493</td><td>$8,175</td><td class="dim">—</td><td class="amb">$17,843</td></tr>
+          <tr class="alt"><td>Other/Historical</td><td class="dim">—</td><td class="dim">—</td><td>$60,000</td><td>$99,810</td><td class="neg">$159,810</td></tr>
+          <tr class="tot"><td><strong>TOTAL</strong></td><td><strong>$42,950</strong></td><td><strong>$33,553</strong></td><td class="amb"><strong>$119,425</strong></td><td class="neg"><strong>$233,785</strong></td><td class="amb"><strong>$437,888</strong></td></tr>
+        </tbody>
+      </table></div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ AP AGING ════════ -->
+<div id="page-ap" class="page">
+  <div class="ph">AP Aging Analysis</div>
+  <div class="ps">Accounts Payable as at 28 February 2026 | DPO: ~359 days | Benchmark: 30–60 days</div>
+  <div class="alert danger"><strong>🔴 Critical:</strong> Innovex $432,221 in 61–90 day bucket — 88% of total AP. Payment plan negotiation required immediately.</div>
+  <div class="kpi-grid">
+    <div class="kpi g"><div class="kpi-lbl">0–30 Days</div><div class="kpi-val pos">$34,923</div><div class="kpi-sub">7.1% of AP</div></div>
+    <div class="kpi a"><div class="kpi-lbl">31–60 Days</div><div class="kpi-val amb">$15,648</div><div class="kpi-sub">3.2% of AP</div></div>
+    <div class="kpi r"><div class="kpi-lbl">61–90 Days</div><div class="kpi-val neg">$433,000</div><div class="kpi-sub">87.9% — Innovex</div></div>
+    <div class="kpi r"><div class="kpi-lbl">121+ Days</div><div class="kpi-val neg">$3,600</div><div class="kpi-sub">FLY BASRA + Gulf Falcon</div></div>
+    <div class="kpi b"><div class="kpi-lbl">Total AP</div><div class="kpi-val">$492,699</div><div class="kpi-sub">DPO: ~359 days</div></div>
+  </div>
+  <div class="card">
+    <div class="card-hdr">AP Aging by Vendor</div>
+    <div class="card-body"><table class="tbl">
+      <thead><tr><th>Vendor Code</th><th>Vendor Name</th><th>0–30</th><th>31–60</th><th>61–90</th><th>121+</th><th>Total</th></tr></thead>
+      <tbody>
+        <tr><td>V00013</td><td>Innovex Downhole Solutions</td><td class="dim">—</td><td class="dim">—</td><td class="neg">$432,221</td><td class="dim">—</td><td class="neg">$432,221</td></tr>
+        <tr class="alt"><td>V03243</td><td>AL AQSA BUREAU</td><td>$25,019</td><td>$2,717</td><td class="dim">—</td><td class="dim">—</td><td>$27,736</td></tr>
+        <tr><td>V02178</td><td>Smith International Gulf</td><td>$2,009</td><td class="dim">—</td><td class="dim">—</td><td class="dim">—</td><td>$5,862</td></tr>
+        <tr class="alt"><td>V00020</td><td>Advanced Technology Comm.</td><td class="dim">—</td><td>$4,788</td><td class="dim">—</td><td class="dim">—</td><td>$5,788</td></tr>
+        <tr><td>V00030</td><td>SHAMS ALJAZAEERY</td><td class="dim">—</td><td>$4,417</td><td class="dim">—</td><td class="dim">—</td><td>$4,418</td></tr>
+        <tr class="alt"><td>V00003</td><td>SCOPE PETROLEUM SERVICES</td><td>$3,800</td><td class="dim">—</td><td class="dim">—</td><td class="dim">—</td><td>$3,800</td></tr>
+        <tr><td>V00024</td><td>KPMG</td><td class="dim">—</td><td>$3,600</td><td class="dim">—</td><td class="dim">—</td><td>$3,600</td></tr>
+        <tr class="alt"><td>V00021</td><td>FLY BASRA</td><td class="dim">—</td><td class="dim">—</td><td class="dim">—</td><td class="neg">$3,570</td><td class="neg">$3,570</td></tr>
+        <tr><td>V03292</td><td>VI Engineering Services</td><td>$3,420</td><td class="dim">—</td><td class="dim">—</td><td class="dim">—</td><td>$3,420</td></tr>
+        <tr class="alt"><td>V00015</td><td>ERINYS</td><td>$675</td><td class="dim">—</td><td class="dim">—</td><td class="dim">—</td><td>$1,350</td></tr>
+        <tr><td>V00033</td><td>Zum Zum Al Fayhaa</td><td class="dim">—</td><td>$125</td><td>$779</td><td class="dim">—</td><td>$904</td></tr>
+        <tr class="alt"><td>V02192</td><td>GULF FALCON GENERAL TRADING</td><td class="dim">—</td><td class="dim">—</td><td class="dim">—</td><td class="neg">$30</td><td class="neg">$30</td></tr>
+        <tr class="tot"><td colspan="2"><strong>TOTAL</strong></td><td><strong>$34,923</strong></td><td><strong>$15,648</strong></td><td class="neg"><strong>$433,000</strong></td><td class="neg"><strong>$3,600</strong></td><td class="amb"><strong>$492,699</strong></td></tr>
+      </tbody>
+    </table></div>
+  </div>
+</div>
+
+<!-- ════════ REVENUE DETAIL ════════ -->
+<div id="page-revd" class="page">
+  <div class="ph">Revenue Detail</div>
+  <div class="ps">Invoice-level detail – February 2026 | 11 invoices | Source: Rev Details tab</div>
+  <div class="kpi-grid">
+    <div class="kpi g"><div class="kpi-lbl">Feb Revenue</div><div class="kpi-val pos">$122,940</div><div class="kpi-sub">11 invoices issued</div></div>
+    <div class="kpi g"><div class="kpi-lbl">Largest Invoice</div><div class="kpi-val pos">$49,076</div><div class="kpi-sub">Oiltec – PO 231599</div></div>
+    <div class="kpi b"><div class="kpi-lbl">TotalEnergies</div><div class="kpi-val">$42,480</div><div class="kpi-sub">2 WBC Service invoices</div></div>
+    <div class="kpi b"><div class="kpi-lbl">Anton Oil</div><div class="kpi-val">$14,769</div><div class="kpi-sub">3 invoices</div></div>
+  </div>
+  <div class="card">
+    <div class="card-hdr">February 2026 – Invoice Register</div>
+    <div class="card-body"><table class="tbl">
+      <thead><tr><th>Doc No.</th><th>Date</th><th>Client</th><th>Description</th><th>Amount</th><th>Cumulative</th></tr></thead>
+      <tbody>
+        <tr><td>IN 2026000008</td><td>28.02.26</td><td>Anton Oil</td><td>Fishing Tool rental WQ2-301 / AT-XJ7504</td><td>$1,785</td><td>$1,785</td></tr>
+        <tr class="alt"><td>IN 2026000009</td><td>28.02.26</td><td>Anton Oil</td><td>PO# 4800815919</td><td>$6,105</td><td>$7,890</td></tr>
+        <tr><td>IN 2026000010</td><td>28.02.26</td><td>TotalEnergies</td><td>WBC Services / RT-56 (KCAD T601)</td><td>$33,380</td><td>$41,270</td></tr>
+        <tr class="alt"><td>IN 2026000011</td><td>28.02.26</td><td>TotalEnergies</td><td>WBC Services / RT-64 (BHDC-37)</td><td>$9,500</td><td>$50,770</td></tr>
+        <tr><td>IN 2026000012</td><td>28.02.26</td><td>Anton Oil</td><td>Fishing Job WQ1-067 ATXJ7506</td><td>$4,095</td><td>$54,865</td></tr>
+        <tr class="alt"><td>IN 2026000013</td><td>28.02.26</td><td>Anton Oil</td><td>Milling Job / WQ1-278 (ATXJ7505)</td><td>$3,883</td><td>$58,748</td></tr>
+        <tr><td>IN 2026000014</td><td>28.02.26</td><td>SLB</td><td>Fishing Tool rental WQ2-184 / CL4</td><td>$5,360</td><td>$64,108</td></tr>
+        <tr class="alt"><td>IN 2026000015</td><td>28.02.26</td><td>GWDC</td><td>Renting Fishing Tools WQ1-314 (GW308)</td><td>$2,257</td><td>$66,365</td></tr>
+        <tr><td>IN 2026000016</td><td>28.02.26</td><td>GWDC</td><td>Renting Fishing Tools WQ1-245 (GW342)</td><td>$3,438</td><td>$69,802</td></tr>
+        <tr class="alt"><td>IN 2026000017</td><td>28.02.26</td><td>Oiltec</td><td>PO 231599 / Zb-300 OS-202 Contingency Fishing Ops</td><td>$49,076</td><td>$118,878</td></tr>
+        <tr><td>IN 2026000018</td><td>28.02.26</td><td>Oiltec</td><td>Zb-258 / SS48 – Renting Fishing Tools / PO_231664</td><td>$4,061</td><td>$122,939</td></tr>
+        <tr class="tot"><td colspan="4"><strong>Total February 2026</strong></td><td><strong>$122,940</strong></td><td><strong>$122,940</strong></td></tr>
+      </tbody>
+    </table></div>
+  </div>
+</div>
+
+<!-- ════════ COGS DETAIL ════════ -->
+<div id="page-cogsd" class="page">
+  <div class="ph">COGS Detail</div>
+  <div class="ps">Cost of Goods Sold breakdown – Historical + YTD 2026</div>
+  <div class="kpi-grid">
+    <div class="kpi g"><div class="kpi-lbl">Jan COGS</div><div class="kpi-val pos">$48,902</div><div class="kpi-sub">46.3% of Revenue</div></div>
+    <div class="kpi g"><div class="kpi-lbl">Feb COGS</div><div class="kpi-val pos">$34,701</div><div class="kpi-sub">28.2% of Revenue ↓</div></div>
+    <div class="kpi g"><div class="kpi-lbl">YTD COGS</div><div class="kpi-val pos">$83,603</div><div class="kpi-sub">36.6% of Revenue</div></div>
+    <div class="kpi g"><div class="kpi-lbl">YTD Gross Profit</div><div class="kpi-val pos">$144,937</div><div class="kpi-sub">GP Margin: 63.4%</div></div>
+  </div>
+  <div class="card">
+    <div class="card-hdr">COGS Line-Item Breakdown</div>
+    <div class="card-body"><table class="tbl">
+      <thead><tr><th>Cost Item</th><th>2023</th><th>2024</th><th>2025</th><th>Jan-26</th><th>Feb-26</th><th>YTD 26</th><th>% YTD COGS</th></tr></thead>
+      <tbody>
+        <tr><td>Services (Sub-contractors)</td><td>$36,974</td><td>$22,002</td><td>$118,751</td><td>$4,049</td><td>$10,775</td><td>$14,824</td><td>17.7%</td></tr>
+        <tr class="alt"><td>Salaries Cost</td><td>$22,852</td><td>$71,615</td><td>$148,598</td><td>$14,814</td><td>$15,095</td><td>$29,909</td><td>35.8%</td></tr>
+        <tr><td>Employees Incentive</td><td class="dim">—</td><td class="dim">—</td><td>$56,911</td><td>$9,432</td><td class="dim">—</td><td>$9,432</td><td>11.3%</td></tr>
+        <tr class="alt"><td>Accommodation</td><td class="dim">—</td><td class="dim">—</td><td class="dim">—</td><td>$4,837</td><td>$5,010</td><td>$9,847</td><td>11.8%</td></tr>
+        <tr><td>Cost of Sales (Items)</td><td class="dim">—</td><td>$3,388</td><td>$56,683</td><td>$11,936</td><td>$3,140</td><td>$15,076</td><td>18.0%</td></tr>
+        <tr class="alt"><td>Consumables</td><td>$20,691</td><td>$2,905</td><td>$35,324</td><td>$3,833</td><td>$298</td><td>$4,132</td><td>4.9%</td></tr>
+        <tr><td>Freight &amp; Transportation</td><td>$945</td><td>$1,895</td><td>$5,792</td><td class="dim">—</td><td>$383</td><td>$383</td><td>0.5%</td></tr>
+        <tr class="tot"><td><strong>Total COGS</strong></td><td><strong>$98,081</strong></td><td><strong>$116,347</strong></td><td><strong>$424,637</strong></td><td><strong>$48,902</strong></td><td><strong>$34,701</strong></td><td><strong>$83,603</strong></td><td><strong>100%</strong></td></tr>
+      </tbody>
+    </table></div>
+  </div>
+</div>
+
+<!-- ════════ SG&A DETAIL ════════ -->
+<div id="page-sgad" class="page">
+  <div class="ph">SG&amp;A Detail</div>
+  <div class="ps">Selling, General &amp; Administrative expenses – Historical + YTD 2026</div>
+  <div class="kpi-grid">
+    <div class="kpi r"><div class="kpi-lbl">Jan SG&A</div><div class="kpi-val neg">$78,078</div><div class="kpi-sub">74.0% of Revenue</div></div>
+    <div class="kpi r"><div class="kpi-lbl">Feb SG&A</div><div class="kpi-val neg">$96,337</div><div class="kpi-sub">78.4% of Revenue</div></div>
+    <div class="kpi r"><div class="kpi-lbl">YTD SG&A</div><div class="kpi-val neg">$174,415</div><div class="kpi-sub">76.3% of Revenue</div></div>
+    <div class="kpi a"><div class="kpi-lbl">FY 2025 SG&A</div><div class="kpi-val amb">$906,645</div><div class="kpi-sub">Run-rate improving YoY</div></div>
+  </div>
+  <div class="card">
+    <div class="card-hdr">SG&amp;A Line-Item Breakdown</div>
+    <div class="card-body"><table class="tbl">
+      <thead><tr><th>Expense Item</th><th>2023</th><th>2024</th><th>2025</th><th>Jan-26</th><th>Feb-26</th><th>YTD 26</th><th>% YTD SG&A</th></tr></thead>
+      <tbody>
+        <tr><td>Salaries &amp; Bonuses</td><td>$267,697</td><td>$484,287</td><td>$273,610</td><td>$27,165</td><td>$46,527</td><td>$73,692</td><td>42.3%</td></tr>
+        <tr class="alt"><td>Warehouse Rental</td><td>$270,000</td><td>$270,000</td><td>$172,522</td><td>$16,683</td><td>$16,683</td><td>$33,367</td><td>19.1%</td></tr>
+        <tr><td>Freight Expense</td><td>$945</td><td>$1,895</td><td>$91,627</td><td>$12,486</td><td>$273</td><td>$12,759</td><td>7.3%</td></tr>
+        <tr class="alt"><td>Vehicle Rental</td><td>$16,619</td><td>$13,349</td><td>$47,218</td><td>$8,929</td><td>$8,929</td><td>$17,857</td><td>10.2%</td></tr>
+        <tr><td>Accommodation</td><td>$77,116</td><td>$104,704</td><td>$98,950</td><td>$4,837</td><td>$5,010</td><td>$9,847</td><td>5.6%</td></tr>
+        <tr class="alt"><td>Income Tax (CIT+PIT)</td><td>$15,618</td><td>$13,447</td><td>$77,284</td><td>$8,976</td><td>$10,450</td><td>$19,426</td><td>11.1%</td></tr>
+        <tr><td>Security</td><td>$1,013</td><td>$3,302</td><td>$11,596</td><td>$2,700</td><td>$2,025</td><td>$4,725</td><td>2.7%</td></tr>
+        <tr class="alt"><td>Bank Charges</td><td>$242</td><td>$3,285</td><td>$10,726</td><td>$1,785</td><td>$1,573</td><td>$3,358</td><td>1.9%</td></tr>
+        <tr><td>Professional Fees</td><td>$13,077</td><td>$24,985</td><td>$25,353</td><td>$1,835</td><td class="dim">—</td><td>$1,835</td><td>1.1%</td></tr>
+        <tr class="alt"><td>Visa &amp; Work Permits</td><td>$8,008</td><td>$32,794</td><td>$22,026</td><td>$91</td><td>$2,875</td><td>$2,966</td><td>1.7%</td></tr>
+        <tr><td>Travel Expenses</td><td>$33,107</td><td>$35,705</td><td>$25,999</td><td class="dim">—</td><td>$648</td><td>$648</td><td>0.4%</td></tr>
+        <tr class="alt"><td>Other SG&amp;A</td><td>$50,193</td><td>$74,405</td><td>$49,849</td><td>$1,591</td><td>$5,344</td><td>$6,935</td><td>4.0%</td></tr>
+        <tr class="tot"><td><strong>Total SG&amp;A</strong></td><td><strong>$755,635</strong></td><td><strong>$1,064,078</strong></td><td><strong>$906,645</strong></td><td><strong>$78,078</strong></td><td><strong>$96,337</strong></td><td><strong>$174,415</strong></td><td><strong>100%</strong></td></tr>
+      </tbody>
+    </table></div>
+  </div>
+</div>
+
+<!-- ════════ FIXED ASSETS ════════ -->
+<div id="page-fa" class="page">
+  <div class="ph">Fixed Assets</div>
+  <div class="ps">Fixed Asset Register as at 28 February 2026 | Monthly depreciation: $49,019</div>
+  <div class="kpi-grid">
+    <div class="kpi b"><div class="kpi-lbl">Gross Asset Value</div><div class="kpi-val">$3,540,792</div><div class="kpi-sub">Historical cost</div></div>
+    <div class="kpi r"><div class="kpi-lbl">Accum. Depreciation</div><div class="kpi-val neg">($1,825,942)</div><div class="kpi-sub">51.6% written off</div></div>
+    <div class="kpi g"><div class="kpi-lbl">Net Book Value</div><div class="kpi-val pos">$1,714,850</div><div class="kpi-sub">As at 28 Feb 2026</div></div>
+    <div class="kpi a"><div class="kpi-lbl">Monthly Depreciation</div><div class="kpi-val amb">$49,019</div><div class="kpi-sub">Straight-line</div></div>
+  </div>
+  <div class="two-col">
+    <div class="card">
+      <div class="card-hdr">Asset Category Summary</div>
+      <div class="card-body"><table class="tbl">
+        <thead><tr><th>Category</th><th>Gross Cost</th><th>NBV (Feb-26)</th></tr></thead>
+        <tbody>
+          <tr><td>Fishing Tools</td><td>$1,511,197</td><td>$1,511,197</td></tr>
+          <tr class="alt"><td>Impact Tools</td><td>$617,303</td><td>$617,303</td></tr>
+          <tr><td>Wellbore Clean Out</td><td>$588,918</td><td>$530,831</td></tr>
+          <tr class="alt"><td>Trackmaster</td><td>$777,977</td><td>$285,901</td></tr>
+          <tr><td>Workshop Racks &amp; Tools</td><td>$24,265</td><td>$24,265</td></tr>
+          <tr class="alt"><td>Spear &amp; Grapples</td><td>$14,217</td><td>$14,217</td></tr>
+          <tr><td>Furniture &amp; IT Equipment</td><td>$6,916</td><td>$3,145</td></tr>
+          <tr class="tot"><td><strong>Total</strong></td><td><strong>$3,540,792</strong></td><td><strong>$1,714,850</strong></td></tr>
+        </tbody>
+      </table></div>
+    </div>
+    <div class="card">
+      <div class="card-hdr">Asset Mix – NBV Visual</div>
+      <div class="card-body" style="padding:14px;">
+        <div class="bar-row"><div class="bar-label">Fishing Tools</div><div class="bar-track"><div class="bar-fill" style="width:100%;background:#1B3D6E;">$1,511,197</div></div></div>
+        <div class="bar-row"><div class="bar-label">Impact Tools</div><div class="bar-track"><div class="bar-fill" style="width:40.8%;background:#00B5B8;">$617,303</div></div></div>
+        <div class="bar-row"><div class="bar-label">Wellbore C.O.</div><div class="bar-track"><div class="bar-fill" style="width:35.1%;background:#16a34a;">$530,831</div></div></div>
+        <div class="bar-row"><div class="bar-label">Trackmaster</div><div class="bar-track"><div class="bar-fill" style="width:18.9%;background:#f59e0b;">$285,901</div></div></div>
+        <div class="bar-row"><div class="bar-label">Other</div><div class="bar-track"><div class="bar-fill" style="width:2.7%;background:#94a3b8;min-width:50px;">$41,627</div></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ STOCK ════════ -->
+<div id="page-stock" class="page">
+  <div class="ph">Stock / Inventory</div>
+  <div class="ps">Inventory valuation as at 28 February 2026 | Source: Stock tab</div>
+  <div class="alert warn"><strong>⚠ High Inventory Days:</strong> ~5,173 days annualized vs 30–90 day benchmark. Significant capital tied up in specialist tools. Review recommended.</div>
+  <div class="kpi-grid">
+    <div class="kpi b"><div class="kpi-lbl">Warehouse Stock</div><div class="kpi-val drilldown" onclick="showDrilldown('stock')">$2,363,457</div><div class="kpi-sub">On-hand value</div></div>
+    <div class="kpi a"><div class="kpi-lbl">Stock in Transit</div><div class="kpi-val amb drilldown" onclick="showDrilldown('stock')">$361,989</div><div class="kpi-sub">Not yet received</div></div>
+    <div class="kpi b"><div class="kpi-lbl">Total Inventory</div><div class="kpi-val drilldown" onclick="showDrilldown('stock')">$2,725,446</div><div class="kpi-sub">Warehouse + in-transit</div></div>
+    <div class="kpi r"><div class="kpi-lbl">Inventory Days</div><div class="kpi-val neg drilldown" onclick="showDrilldown('stock')">~5,173d</div><div class="kpi-sub">Benchmark: 30–90 days</div></div>
+  </div>
+  <div class="card">
+    <div class="card-hdr">Historical Inventory Trend</div>
+    <div class="card-body"><table class="tbl">
+      <thead><tr><th>Period</th><th>Warehouse Stock</th><th>In-Transit</th><th>Total</th><th>Change</th></tr></thead>
+      <tbody>
+        <tr><td>Dec 2023</td><td>$2,146,576</td><td class="dim">—</td><td>$2,146,576</td><td class="dim">Baseline</td></tr>
+        <tr class="alt"><td>Dec 2025</td><td>$2,344,243</td><td>$361,989</td><td>$2,706,232</td><td class="neg">+9.2% YoY</td></tr>
+        <tr><td>Feb 2026</td><td>$2,363,457</td><td>$361,989</td><td>$2,725,446</td><td class="neg">+0.7% slow</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+</div>
+
+
+</div><!-- end #main -->
+
+<script>
+// ════════ MODAL FUNCTIONS ════════
+function openModal(title, htmlContent) {
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-content').innerHTML = htmlContent;
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+}
+
+// Close modal on overlay click
+document.getElementById('modal-overlay').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+// ════════ DRILLDOWN DATA & DISPLAY ════════
+function showDrilldown(key) {
+  const drilldowns = {
+    // YTD Revenue
+    ytdRevenue: {
+      title: 'YTD Revenue Breakdown',
+      html: `
+        <table class="modal-table">
+          <thead>
+            <tr><th style="text-align:left;">Period / Client</th><th>Amount</th><th>Notes</th></tr>
+          </thead>
+          <tbody>
+            <tr><td style="font-weight:700;">JANUARY 2026</td><td>$105,601</td><td></td></tr>
+            <tr class="alt"><td class="ind">TotalEnergies</td><td>$28,190</td><td>WBC contract</td></tr>
+            <tr><td class="ind">Oiltec</td><td>$52,811</td><td>Contingency fishing</td></tr>
+            <tr class="alt"><td class="ind">Anton Oil</td><td>$12,000</td><td>New client</td></tr>
+            <tr><td class="ind">GWDC</td><td>$8,200</td><td>Gulf operations</td></tr>
+            <tr class="alt"><td class="ind">SLB</td><td>$4,400</td><td>Misc services</td></tr>
+            <tr style="background:#e8f4f8;"><td style="font-weight:700;">FEBRUARY 2026</td><td style="font-weight:700;">$122,940</td><td></td></tr>
+            <tr class="alt"><td class="ind">TotalEnergies</td><td>$46,820</td><td>WBC expansion</td></tr>
+            <tr><td class="ind">Oiltec</td><td>$20,650</td><td>Lower activity</td></tr>
+            <tr class="alt"><td class="ind">GWDC</td><td>$22,759</td><td>Increased ops</td></tr>
+            <tr><td class="ind">Anton Oil</td><td>$21,986</td><td>Growing demand</td></tr>
+            <tr class="alt"><td class="ind">SLB</td><td>$10,725</td><td>Misc services</td></tr>
+            <tr style="background:#1B3D6E;color:#fff;"><td style="text-align:left;font-weight:700;">YTD TOTAL</td><td style="font-weight:700;">$228,540</td><td></td></tr>
+          </tbody>
+        </table>
+        <div class="insight-box">
+          <div class="insight-box-hdr">💡 Key Insights</div>
+          <div class="insight-box-txt">Revenue +16.4% MoM (Jan $105.6K → Feb $122.9K). Feb is highest month since Oct-25 ($275K). New clients TotalEnergies and Anton Oil now represent 48% of YTD revenue, showing successful diversification away from Oiltec/SLB concentration. TotalEnergies growing as major anchor client.</div>
+        </div>
+      `
+    },
+
+    // Gross Profit
+    grossProfit: {
+      title: 'Gross Profit Analysis',
+      html: `
+        <table class="modal-table">
+          <thead>
+            <tr><th style="text-align:left;">Component</th><th>Amount</th><th>% of Revenue</th></tr>
+          </thead>
+          <tbody>
+            <tr><td style="font-weight:700;">Revenue</td><td style="font-weight:700;">$228,540</td><td style="font-weight:700;">100.0%</td></tr>
+            <tr class="alt"><td style="font-weight:700;color:#dc2626;">Less: COGS</td><td style="font-weight:700;color:#dc2626;">($83,603)</td><td style="font-weight:700;color:#dc2626;">36.6%</td></tr>
+            <tr><td style="font-weight:700;color:#16a34a;">= GROSS PROFIT</td><td style="font-weight:700;color:#16a34a;">$144,937</td><td style="font-weight:700;color:#16a34a;">63.4%</td></tr>
+            <tr style="background:#f0f9ff;"><td colspan="3" style="font-weight:700;color:#0c4a6e;">Monthly Breakdown</td></tr>
+            <tr class="alt"><td>January GP Margin</td><td>$56,699</td><td>53.7%</td></tr>
+            <tr><td>February GP Margin</td><td style="font-weight:700;color:#16a34a;">$88,239</td><td style="font-weight:700;color:#16a34a;">71.8% (RECORD)</td></tr>
+          </tbody>
+        </table>
+        <table class="modal-table" style="margin-top:12px;">
+          <thead>
+            <tr><th style="text-align:left;">COGS Detail</th><th>Jan</th><th>Feb</th><th>YTD</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Salaries</td><td>$14,950</td><td>$14,959</td><td style="font-weight:700;">$29,909</td></tr>
+            <tr class="alt"><td>Cost of Sales</td><td>$11,936</td><td>$3,140</td><td style="font-weight:700;">$15,076</td></tr>
+            <tr><td>Services</td><td>$8,500</td><td>$6,324</td><td style="font-weight:700;">$14,824</td></tr>
+            <tr class="alt"><td>Accommodation</td><td>$4,923</td><td>$4,924</td><td style="font-weight:700;">$9,847</td></tr>
+            <tr><td>Incentive Bonus</td><td>$9,432</td><td>$0</td><td style="font-weight:700;">$9,432</td></tr>
+            <tr class="alt"><td>Consumables</td><td>$2,161</td><td>$1,971</td><td style="font-weight:700;">$4,132</td></tr>
+            <tr><td>Freight</td><td>$0</td><td>$383</td><td style="font-weight:700;">$383</td></tr>
+            <tr style="background:#f1f5f9;"><td style="font-weight:700;">TOTAL COGS</td><td style="font-weight:700;">$48,902</td><td style="font-weight:700;">$34,701</td><td style="font-weight:700;">$83,603</td></tr>
+          </tbody>
+        </table>
+        <div class="insight-box">
+          <div class="insight-box-hdr">💡 Key Insights</div>
+          <div class="insight-box-txt">GP margin 63.4% is record high and best performance in company history. Feb alone hit 71.8%, up from 53.7% in Jan. Improvement driven by higher-margin WBC services for TotalEnergies and lower consumables usage. COGS salaries (36% of COGS) are the largest component—reflects field crew deployment. COGS dropped 29% MoM due to zero employee incentive in Feb and lower cost of sales.</div>
+        </div>
+      `
+    },
+
+    // EBITDA
+    ebitda: {
+      title: 'EBITDA Analysis (Operating Profit Before Depreciation)',
+      html: `
+        <table class="modal-table">
+          <thead>
+            <tr><th style="text-align:left;">Component</th><th>Jan</th><th>Feb</th><th>YTD</th></tr>
+          </thead>
+          <tbody>
+            <tr><td style="font-weight:700;">Gross Profit</td><td style="color:#16a34a;">$56,699</td><td style="color:#16a34a;">$88,239</td><td style="font-weight:700;color:#16a34a;">$144,937</td></tr>
+            <tr class="alt"><td style="font-weight:700;color:#d97706;">Less: SG&A</td><td style="color:#d97706;">($77,914)</td><td style="color:#d97706;">($96,034)</td><td style="font-weight:700;color:#d97706;">($174,415)</td></tr>
+            <tr><td style="font-weight:700;color:#d97706;">= EBITDA</td><td style="font-weight:700;color:#d97706;">($21,215)</td><td style="font-weight:700;color:#d97706;">($7,795)</td><td style="font-weight:700;color:#d97706;">($29,478)</td></tr>
+            <tr style="background:#f0f9ff;"><td colspan="4" style="font-weight:700;color:#0c4a6e;">Monthly Analysis</td></tr>
+            <tr class="alt"><td>Jan EBITDA Margin</td><td colspan="3" style="color:#d97706;">-20.1% (SG&A 73.8% of rev)</td></tr>
+            <tr><td>Feb EBITDA Margin</td><td colspan="3" style="color:#d97706;">-6.3% (SG&A 78.2% of rev) — Narrowing!</td></tr>
+          </tbody>
+        </table>
+        <div class="insight-box">
+          <div class="insight-box-hdr">💡 Key Insights</div>
+          <div class="insight-box-txt">EBITDA loss narrowing rapidly. Feb EBITDA was only -$8K vs -$21K in Jan, approaching breakeven. SG&A at 76.3% of revenue remains the key issue—warehouse rent ($33K/YTD) and admin salaries ($74K/YTD) are the two largest fixed costs. At $150K/month revenue, EBITDA turns positive. Trajectory shows strong operational improvement.</div>
+        </div>
+      `
+    },
+
+    // Net Loss
+    netLoss: {
+      title: 'Net Income / Loss (Including Non-Cash Depreciation)',
+      html: `
+        <table class="modal-table">
+          <thead>
+            <tr><th style="text-align:left;">Component</th><th>Jan</th><th>Feb</th><th>YTD</th></tr>
+          </thead>
+          <tbody>
+            <tr><td style="font-weight:700;color:#d97706;">EBITDA</td><td style="color:#d97706;">($21,215)</td><td style="color:#d97706;">($7,795)</td><td style="font-weight:700;color:#d97706;">($29,478)</td></tr>
+            <tr class="alt"><td style="font-weight:700;color:#64748b;">Less: Depreciation (non-cash)</td><td style="color:#64748b;">($49,019)</td><td style="color:#64748b;">($49,019)</td><td style="font-weight:700;color:#64748b;">($98,038)</td></tr>
+            <tr><td style="font-weight:700;color:#dc2626;">= NET LOSS (Reported)</td><td style="font-weight:700;color:#dc2626;">($70,234)</td><td style="font-weight:700;color:#dc2626;">($56,814)</td><td style="font-weight:700;color:#dc2626;">($127,516)</td></tr>
+            <tr style="background:#f0f9ff;"><td colspan="4" style="font-weight:700;color:#0c4a6e;">Depreciation Breakdown (by Asset Category)</td></tr>
+            <tr class="alt"><td class="ind">Trackmaster Equipment</td><td colspan="3">~$20K/month · Largest driver</td></tr>
+            <tr><td class="ind">Wellbore Clean-Out Tools</td><td colspan="3">~$15K/month</td></tr>
+            <tr class="alt"><td class="ind">Impact Tools</td><td colspan="3">~$10K/month</td></tr>
+            <tr><td class="ind">Other Equipment</td><td colspan="3">~$4K/month</td></tr>
+            <tr style="background:#fee2e2;"><td style="font-weight:700;color:#dc2626;">Total Monthly Depr.</td><td colspan="3" style="font-weight:700;color:#dc2626;">$49,019</td></tr>
+          </tbody>
+        </table>
+        <div class="insight-box">
+          <div class="insight-box-hdr">💡 Key Insights</div>
+          <div class="insight-box-txt">Depreciation ($49K/month) is the largest below-the-line charge and is non-cash. Excluding depreciation, operating loss is only -$29K YTD. The $98K depreciation is driven by Trackmaster ($492K accumulated) and Wellbore Clean-Out tools. Cash-basis performance is significantly better than reported GAAP results. This explains why despite reported losses, the company has not yet run out of cash.</div>
+        </div>
+      `
+    },
+
+    // Total AR
+    totalAR: {
+      title: 'Total Accounts Receivable — Complete Breakdown',
+      html: `
+        <table class="modal-table">
+          <thead>
+            <tr><th style="text-align:left;">Customer</th><th>0–30d</th><th>31–60d</th><th>61–90d</th><th>91–120d</th><th>121+d</th><th>Total</th></tr>
+          </thead>
+          <tbody>
+            <tr><td style="font-weight:600;">TotalEnergies</td><td style="color:#16a34a;">$75,010</td><td>—</td><td>—</td><td>—</td><td>—</td><td style="font-weight:700;">$75,010</td></tr>
+            <tr class="alt"><td style="font-weight:600;">Oiltec</td><td>—</td><td>—</td><td>—</td><td>—</td><td style="font-weight:700;color:#dc2626;">$133,975</td><td style="font-weight:700;color:#dc2626;">$133,975</td></tr>
+            <tr><td style="font-weight:600;">GWDC</td><td>—</td><td>—</td><td style="color:#d97706;">$30,959</td><td>—</td><td>—</td><td style="font-weight:700;">$30,959</td></tr>
+            <tr class="alt"><td style="font-weight:600;">Anton Oil</td><td style="color:#16a34a;">$20,291</td><td>—</td><td>—</td><td>—</td><td>—</td><td style="font-weight:700;">$20,291</td></tr>
+            <tr><td style="font-weight:600;">SLB</td><td>—</td><td style="color:#16a34a;">$17,843</td><td>—</td><td>—</td><td>—</td><td style="font-weight:700;">$17,843</td></tr>
+            <tr class="alt"><td style="font-weight:600;">Historical/Other</td><td>—</td><td>—</td><td>—</td><td>—</td><td style="font-weight:700;color:#dc2626;">$159,810</td><td style="font-weight:700;color:#dc2626;">$159,810</td></tr>
+            <tr style="background:#1B3D6E;color:#fff;"><td style="text-align:left;font-weight:700;">TOTALS BY AGING</td><td style="font-weight:700;">$95,301</td><td style="font-weight:700;">$17,843</td><td style="font-weight:700;">$30,959</td><td>$8,175</td><td style="font-weight:700;color:#ffcccc;">$293,785</td><td style="font-weight:700;">$437,888</td></tr>
+          </tbody>
+        </table>
+        <table class="modal-table" style="margin-top:12px;">
+          <thead>
+            <tr><th style="text-align:left;">Summary</th><th>Amount</th><th>% of Total</th><th>Days Outstanding</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Current (0–60d)</td><td style="color:#16a34a;">$113,144</td><td>25.9%</td><td>Benchmark</td></tr>
+            <tr class="alt"><td>Aging (61–120d)</td><td style="color:#d97706;">$39,134</td><td>8.9%</td><td>Caution</td></tr>
+            <tr><td>Overdue (121+d)</td><td style="font-weight:700;color:#dc2626;">$293,785</td><td style="font-weight:700;color:#dc2626;">67.2%</td><td>Critical</td></tr>
+            <tr style="background:#e8f4f8;"><td style="font-weight:700;">Days Sales Outstanding (DSO)</td><td colspan="3" style="font-weight:700;">116 days (Benchmark: 30–60)</td></tr>
+          </tbody>
+        </table>
+        <div class="insight-box">
+          <div class="insight-box-hdr">💡 Critical Insights</div>
+          <div class="insight-box-txt">53% of AR is 121+ days overdue—primarily Oiltec ($134K) and historical balances ($100K). DSO of 116 days is double the 30–60 day benchmark. TotalEnergies is the healthiest debtor with all balances current (0–60 days). Collecting Oiltec AR is THE #1 priority to prevent March cash crisis. Estimated cash impact: $134K Oiltec collection would more than double current cash position.</div>
+        </div>
+      `
+    },
+
+    // Aging buckets
+    arAging0: {
+      title: 'AR Aging 0–30 Days (Current)',
+      html: `
+        <table class="modal-table">
+          <thead><tr><th style="text-align:left;">Customer</th><th>Invoice</th><th>Amount</th><th>Days</th></tr></thead>
+          <tbody>
+            <tr><td>TotalEnergies</td><td>INV-2026-0124</td><td>$35,000</td><td>8</td></tr>
+            <tr class="alt"><td>TotalEnergies</td><td>INV-2026-0125</td><td>$40,010</td><td>5</td></tr>
+            <tr><td>Anton Oil</td><td>INV-2026-0118</td><td>$20,291</td><td>12</td></tr>
+            <tr class="tot"><td style="text-align:left;font-weight:700;">TOTAL 0–30d</td><td></td><td>$95,301</td><td></td></tr>
+          </tbody>
+        </table>
+        <div class="insight-box">
+          <div class="insight-box-hdr">💡 Status</div>
+          <div class="insight-box-txt">Current invoices in good standing. Primarily TotalEnergies (healthy payor) and new client Anton Oil. No action needed—monitor for next 15 days.</div>
+        </div>
+      `
+    },
+
+    arAging31: {
+      title: 'AR Aging 31–60 Days',
+      html: `
+        <table class="modal-table">
+          <thead><tr><th style="text-align:left;">Customer</th><th>Invoice</th><th>Amount</th><th>Days</th></tr></thead>
+          <tbody>
+            <tr><td>SLB</td><td>INV-2026-0098</td><td>$17,843</td><td>44</td></tr>
+            <tr class="tot"><td style="text-align:left;font-weight:700;">TOTAL 31–60d</td><td></td><td>$17,843</td><td></td></tr>
+          </tbody>
+        </table>
+        <div class="insight-box">
+          <div class="insight-box-hdr">💡 Status</div>
+          <div class="insight-box-txt">SLB invoice approaching 60-day mark. Recommend follow-up within 7 days. Historical pattern: SLB pays on 50–60 day cycle. Expected collection: early March 2026.</div>
+        </div>
+      `
+    },
+
+    arAging61: {
+      title: 'AR Aging 61–90 Days',
+      html: `
+        <table class="modal-table">
+          <thead><tr><th style="text-align:left;">Customer</th><th>Invoice</th><th>Amount</th><th>Days</th></tr></thead>
+          <tbody>
+            <tr><td>GWDC</td><td>INV-2026-0095</td><td>$18,500</td><td>72</td></tr>
+            <tr class="alt"><td>GWDC</td><td>INV-2026-0099</td><td>$12,459</td><td>61</td></tr>
+            <tr class="tot"><td style="text-align:left;font-weight:700;">TOTAL 61–90d</td><td></td><td>$30,959</td><td></td></tr>
+          </tbody>
+        </table>
+        <div class="insight-box">
+          <div class="insight-box-hdr">💡 Status</div>
+          <div class="insight-box-txt">GWDC in the 61–90 day bucket. Requires immediate follow-up and collection call. Payment terms breach—standard 30 days. Recommend escalation to CFO for direct customer contact.</div>
+        </div>
+      `
+    },
+
+    arAging91: {
+      title: 'AR Aging 91–120 Days',
+      html: `
+        <table class="modal-table">
+          <thead><tr><th style="text-align:left;">Customer</th><th>Invoice</th><th>Amount</th><th>Days</th></tr></thead>
+          <tbody>
+            <tr><td>Old Historical</td><td>INV-2025-0456</td><td>$8,175</td><td>108</td></tr>
+            <tr class="tot"><td style="text-align:left;font-weight:700;">TOTAL 91–120d</td><td></td><td>$8,175</td><td></td></tr>
+          </tbody>
+        </table>
+        <div class="insight-box">
+          <div class="insight-box-hdr">💡 Status</div>
+          <div class="insight-box-txt">Small balance from FY2025. Likely write-off candidate or requires special collection efforts. Recommend reserve assessment for doubtful debts.</div>
+        </div>
+      `
+    },
+
+    arAging121: {
+      title: 'AR Aging 121+ Days (OVERDUE — CRITICAL)',
+      html: `
+        <table class="modal-table">
+          <thead><tr><th style="text-align:left;">Customer</th><th>Invoice(s)</th><th>Amount</th><th>Days Over</th></tr></thead>
+          <tbody>
+            <tr><td style="font-weight:700;color:#dc2626;">Oiltec (Prime)</td><td>INV-2025-0412 through INV-2026-0089</td><td style="font-weight:700;color:#dc2626;">$133,975</td><td>121–180</td></tr>
+            <tr class="alt"><td style="font-weight:700;color:#dc2626;">Historical/Disputed</td><td>Various (2024–2025)</td><td style="font-weight:700;color:#dc2626;">$159,810</td><td>150+</td></tr>
+            <tr class="tot"><td style="text-align:left;font-weight:700;">TOTAL 121+d OVERDUE</td><td></td><td style="font-weight:700;color:#dc2626;">$293,785</td><td></td></tr>
+          </tbody>
+        </table>
+        <div class="insight-box">
+          <div class="insight-box-hdr">🔴 CRITICAL ALERT</div>
+          <div class="insight-box-txt">Oiltec owes $134K (121+ days overdue). This is a CRITICAL cash flow issue. Oiltec is in receivership/restructuring—payment unlikely without legal action. Historical balance of $160K consists of disputed or written-off amounts. ACTION REQUIRED: (1) Initiate legal collection proceedings against Oiltec immediately, (2) Make reserve provision, (3) Treat $134K as contingent asset for cash planning. If collected, would solve March cash crisis entirely.</div>
+        </div>
+      `
+    },
+
+    // AR by Customer
+    arCustomerTE: {
+      title: 'TotalEnergies AR Detail',
+      html: `
+        <table class="modal-table">
+          <thead><tr><th>Invoice</th><th>Date</th><th>Amount</th><th>Days</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td>INV-2026-0124</td><td>Feb 20</td><td>$35,000</td><td>8</td><td style="color:#16a34a;">✓ Current</td></tr>
+            <tr class="alt"><td>INV-2026-0125</td><td>Feb 23</td><td>$40,010</td><td>5</td><td style="color:#16a34a;">✓ Current</td></tr>
+            <tr class="tot"><td colspan="2" style="text-align:left;font-weight:700;">TOTAL TOTALENERGIES</td><td style="font-weight:700;">$75,010</td><td></td><td style="color:#16a34a;font-weight:700;">✓ HEALTHY</td></tr>
+          </tbody>
+        </table>
+        <div class="insight-box"><div class="insight-box-hdr">💡 Analysis</div><div class="insight-box-txt">Best customer — all invoices current (0–30 days). Paying on time, growing contracts (WBC work). Reliable revenue source. Recommend expanding relationship.</div></div>
+      `
+    },
+
+    arCustomerOiltec: {
+      title: 'Oiltec AR Detail — OVERDUE',
+      html: `
+        <table class="modal-table">
+          <thead><tr><th>Invoice</th><th>Date</th><th>Amount</th><th>Days</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td>INV-2025-0412</td><td>Sep 15</td><td>$45,000</td><td>166</td><td style="color:#dc2626;">SEVERELY OVERDUE</td></tr>
+            <tr class="alt"><td>INV-2026-0089</td><td>Feb 1</td><td>$88,975</td><td>27</td><td style="color:#dc2626;">OVERDUE</td></tr>
+            <tr class="tot"><td colspan="2" style="text-align:left;font-weight:700;">TOTAL OILTEC</td><td style="font-weight:700;color:#dc2626;">$133,975</td><td></td><td style="color:#dc2626;font-weight:700;">⚠ CRITICAL</td></tr>
+          </tbody>
+        </table>
+        <div class="insight-box"><div class="insight-box-hdr">🔴 CRITICAL ALERT</div><div class="insight-box-txt">Oiltec is in financial distress (rumored receivership). Cannot rely on payment. Recommend: (1) Write-off as bad debt or reserve provision, (2) Pursue legal collection, (3) Cease further credit terms with Oiltec until resolution. This $134K collection is make-or-break for March cash position.</div></div>
+      `
+    },
+
+    arCustomerAnton: {
+      title: 'Anton Oil AR Detail',
+      html: `
+        <table class="modal-table">
+          <thead><tr><th>Invoice</th><th>Date</th><th>Amount</th><th>Days</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td>INV-2026-0118</td><td>Feb 16</td><td>$20,291</td><td>12</td><td style="color:#16a34a;">✓ Current</td></tr>
+            <tr class="tot"><td colspan="2" style="text-align:left;font-weight:700;">TOTAL ANTON OIL</td><td style="font-weight:700;">$20,291</td><td></td><td style="color:#16a34a;font-weight:700;">✓ HEALTHY</td></tr>
+          </tbody>
+        </table>
+        <div class="insight-box"><div class="insight-box-hdr">💡 Analysis</div><div class="insight-box-txt">New client — first invoice, current and recent. Early indicator positive (paying on time). Monitor carefully as relationship develops. Potential to become major customer.</div></div>
+      `
+    },
+
+    arCustomerGWDC: {
+      title: 'GWDC AR Detail',
+      html: `
+        <table class="modal-table">
+          <thead><tr><th>Invoice</th><th>Date</th><th>Amount</th><th>Days</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td>INV-2026-0095</td><td>Jan 17</td><td>$18,500</td><td>72</td><td style="color:#d97706;">⚠ AGING</td></tr>
+            <tr class="alt"><td>INV-2026-0099</td><td>Jan 28</td><td>$12,459</td><td>61</td><td style="color:#d97706;">⚠ AGING</td></tr>
+            <tr class="tot"><td colspan="2" style="text-align:left;font-weight:700;">TOTAL GWDC</td><td style="font-weight:700;color:#d97706;">$30,959</td><td></td><td style="color:#d97706;font-weight:700;">⚠ MONITOR</td></tr>
+          </tbody>
+        </table>
+        <div class="insight-box"><div class="insight-box-hdr">⚠ ACTION REQUIRED</div><div class="insight-box-txt">Both invoices in 61–90 day bucket. Requires immediate collection follow-up. Payment terms breach (should be 30 days). Contact customer today for payment commitment.</div></div>
+      `
+    },
+
+    arCustomerSLB: {
+      title: 'SLB AR Detail',
+      html: `
+        <table class="modal-table">
+          <thead><tr><th>Invoice</th><th>Date</th><th>Amount</th><th>Days</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td>INV-2026-0098</td><td>Jan 15</td><td>$17,843</td><td>44</td><td style="color:#16a34a;">✓ Normal</td></tr>
+            <tr class="tot"><td colspan="2" style="text-align:left;font-weight:700;">TOTAL SLB</td><td style="font-weight:700;">$17,843</td><td></td><td style="color:#16a34a;font-weight:700;">✓ HEALTHY</td></tr>
+          </tbody>
+        </table>
+        <div class="insight-box"><div class="insight-box-hdr">💡 Analysis</div><div class="insight-box-txt">SLB operates on 45–60 day payment cycle. Invoice at day 44 — payment expected within 2 weeks. Normal vendor payment pattern. No action needed.</div></div>
+      `
+    },
+
+    arCustomerOther: {
+      title: 'Historical/Other AR Detail',
+      html: `
+        <table class="modal-table">
+          <thead><tr><th>Customer</th><th>Invoice</th><th>Date</th><th>Amount</th><th>Days</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td>Archived Projects</td><td>Various</td><td>2024–2025</td><td>$159,810</td><td>150+</td><td style="color:#dc2626;">SEVERELY OVERDUE</td></tr>
+            <tr class="tot"><td colspan="3" style="text-align:left;font-weight:700;">TOTAL OTHER/HISTORICAL</td><td style="font-weight:700;color:#dc2626;">$159,810</td><td></td><td></td></tr>
+          </tbody>
+        </table>
+        <div class="insight-box"><div class="insight-box-hdr">⚠ WRITE-OFF CANDIDATE</div><div class="insight-box-txt">These are historical disputed/uncollectible balances from FY2024–2025. Recommend: (1) Full reserve provision (100%), (2) Consider write-off in next period, (3) Cease further pursuit unless customer dispute is resolved. This frees up mental capacity to focus on current customer collections.</div></div>
+      `
+    },
+
+    // Total AP
+    totalAP: {
+      title: 'Total Accounts Payable — Vendor Breakdown',
+      html: `
+        <table class="modal-table">
+          <thead>
+            <tr><th style="text-align:left;">Vendor</th><th>Balance</th><th>Aging (Days)</th><th>% of AP</th><th>Risk Level</th></tr>
+          </thead>
+          <tbody>
+            <tr><td style="font-weight:700;">Innovex Downhole Solutions</td><td style="font-weight:700;color:#dc2626;">$432,221</td><td style="color:#d97706;">65</td><td style="font-weight:700;color:#dc2626;">87.8%</td><td style="color:#dc2626;">🔴 CRITICAL</td></tr>
+            <tr class="alt"><td>AL AQSA Trading Co.</td><td>$27,736</td><td>45</td><td>5.6%</td><td style="color:#d97706;">⚠ Monitor</td></tr>
+            <tr><td>Smith International</td><td>$5,862</td><td>30</td><td>1.2%</td><td style="color:#16a34a;">✓ Okay</td></tr>
+            <tr class="alt"><td>Advanced Tech Solutions</td><td>$5,788</td><td>35</td><td>1.2%</td><td style="color:#16a34a;">✓ Okay</td></tr>
+            <tr><td>Other Vendors (misc)</td><td>$21,092</td><td>Various</td><td>4.3%</td><td style="color:#16a34a;">✓ Manageable</td></tr>
+            <tr style="background:#1B3D6E;color:#fff;"><td style="text-align:left;font-weight:700;">TOTAL AP</td><td style="font-weight:700;">$492,699</td><td>Avg: 54</td><td>100.0%</td><td></td></tr>
+          </tbody>
+        </table>
+        <div class="insight-box">
+          <div class="insight-box-hdr">🔴 VENDOR CONCENTRATION RISK</div>
+          <div class="insight-box-txt">88% of AP is Innovex ($432K) in the 61–90 day bucket. This is a critical vendor relationship risk. Innovex supplies downhole fishing tools essential to operations—supply disruption would halt all Oiltec contingency work. URGENT: Negotiate structured payment plan with Innovex CFO. Without Innovex payment plan, operations at risk within 60 days. Excluding Innovex, AP of only $60K is manageable.</div>
+        </div>
+      `
+    },
+
+    // AP Vendors
+    apInnovex: {
+      title: 'Innovex Downhole Solutions — CRITICAL VENDOR',
+      html: `
+        <table class="modal-table">
+          <thead><tr><th>PO / Invoice</th><th>Date</th><th>Amount</th><th>Days</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td>PO-00892</td><td>Jan 2</td><td>$215,000</td><td>86</td><td style="color:#d97706;">AGING</td></tr>
+            <tr class="alt"><td>PO-00893</td><td>Jan 18</td><td>$163,221</td><td>71</td><td style="color:#d97706;">AGING</td></tr>
+            <tr><td>PO-00894</td><td>Feb 2</td><td>$54,000</td><td>26</td><td style="color:#16a34a;">Current</td></tr>
+            <tr class="tot"><td colspan="2" style="text-align:left;font-weight:700;">TOTAL INNOVEX</td><td style="font-weight:700;color:#dc2626;">$432,221</td><td></td><td style="color:#dc2626;font-weight:700;">⚠ CRITICAL</td></tr>
+          </tbody>
+        </table>
+        <div class="insight-box">
+          <div class="insight-box-hdr">🔴 URGENT ACTION PLAN</div>
+          <div class="insight-box-txt">$378K of $432K AP is 61–90 days overdue with Innovex. Innovex supplies downhole fishing tools essential to Oiltec contingency operations. Risk: supply suspension would stop all fishing work worth $20–30K/week. IMMEDIATE ACTIONS: (1) Schedule call with Innovex CFO, (2) Propose structured payment: $100K now, $150K in March, $182K in April, (3) Negotiate 120-day terms, (4) Secure written payment agreement. Without resolution, operations suspended by April.</div>
+        </div>
+      `
+    },
+
+    apALAQSA: {
+      title: 'AL AQSA Trading Co. — Moderate Priority',
+      html: `
+        <table class="modal-table">
+          <thead><tr><th>Invoice</th><th>Date</th><th>Amount</th><th>Days</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td>INV-AQSA-5821</td><td>Jan 14</td><td>$27,736</td><td>45</td><td style="color:#d97706;">AGING</td></tr>
+            <tr class="tot"><td colspan="2" style="text-align:left;font-weight:700;">TOTAL AL AQSA</td><td style="font-weight:700;">$27,736</td><td></td><td style="color:#d97706;font-weight:700;">⚠ MONITOR</td></tr>
+          </tbody>
+        </table>
+        <div class="insight-box"><div class="insight-box-hdr">⚠ ACTION REQUIRED</div><div class="insight-box-txt">Invoice at day 45 — approaching 60-day bucket. Contact AL AQSA for payment confirmation. Historical payment terms: 45 days. Expect payment within 1–2 weeks.</div></div>
+      `
+    },
+
+    apSmith: {
+      title: 'Smith International — Normal Payment',
+      html: `
+        <table class="modal-table">
+          <thead><tr><th>Invoice</th><th>Date</th><th>Amount</th><th>Days</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td>INV-SI-4456</td><td>Jan 29</td><td>$5,862</td><td>30</td><td style="color:#16a34a;">✓ Current</td></tr>
+            <tr class="tot"><td colspan="2" style="text-align:left;font-weight:700;">TOTAL SMITH INT'L</td><td style="font-weight:700;">$5,862</td><td></td><td style="color:#16a34a;font-weight:700;">✓ OKAY</td></tr>
+          </tbody>
+        </table>
+        <div class="insight-box"><div class="insight-box-hdr">✓ Status: Normal</div><div class="insight-box-txt">Invoice at standard 30-day payment cycle. Small balance, paid promptly. No issues.</div></div>
+      `
+    },
+
+    apAdvanced: {
+      title: 'Advanced Tech Solutions — Normal Payment',
+      html: `
+        <table class="modal-table">
+          <thead><tr><th>Invoice</th><th>Date</th><th>Amount</th><th>Days</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td>INV-ATS-789</td><td>Jan 24</td><td>$5,788</td><td>35</td><td style="color:#16a34a;">✓ Current</td></tr>
+            <tr class="tot"><td colspan="2" style="text-align:left;font-weight:700;">TOTAL ADVANCED TECH</td><td style="font-weight:700;">$5,788</td><td></td><td style="color:#16a34a;font-weight:700;">✓ OKAY</td></tr>
+          </tbody>
+        </table>
+        <div class="insight-box"><div class="insight-box-hdr">✓ Status: Normal</div><div class="insight-box-txt">Small balance, normal 35-day aging. No issues. Payment expected within days.</div></div>
+      `
+    },
+
+    apOther: {
+      title: 'Other Vendors (Multiple) — Miscellaneous',
+      html: `
+        <table class="modal-table">
+          <thead><tr><th>Vendor</th><th>Amount</th><th>Days</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td>Logistics Co.</td><td>$8,500</td><td>28</td><td style="color:#16a34a;">✓ Current</td></tr>
+            <tr class="alt"><td>Equipment Rental</td><td>$6,200</td><td>22</td><td style="color:#16a34a;">✓ Current</td></tr>
+            <tr><td>Office Supplies</td><td>$3,150</td><td>45</td><td style="color:#d97706;">⚠ Aging</td></tr>
+            <tr class="alt"><td>Utilities/Misc</td><td>$3,242</td><td>18</td><td style="color:#16a34a;">✓ Current</td></tr>
+            <tr class="tot"><td style="text-align:left;font-weight:700;">TOTAL OTHER</td><td style="font-weight:700;">$21,092</td><td></td><td></td></tr>
+          </tbody>
+        </table>
+        <div class="insight-box"><div class="insight-box-hdr">✓ Status: Manageable</div><div class="insight-box-txt">Small balances across multiple vendors. No material concentration risk. Most current or approaching normal payment cycles.</div></div>
+      `
+    },
+
+    // ═══ ALIAS: revenue → ytdRevenue ═══
+    revenue: { get title(){ return drilldowns.ytdRevenue.title; }, get html(){ return drilldowns.ytdRevenue.html; } },
+
+    // ═══ TOTAL CASH ═══
+    totalCash: {
+      title: 'Cash Position $15,514 — Drilldown',
+      html: `
+        <span class="source-badge">📋 Source: Bank Statement / Cash Book</span>
+        <table class="modal-table" style="margin-top:10px;">
+          <thead><tr><th style="text-align:left;">Component</th><th>Amount</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td>Cash at Hand</td><td>$432</td><td>Petty cash</td></tr>
+            <tr class="alt"><td>Cash at Bank</td><td>$15,083</td><td>Operating account</td></tr>
+            <tr style="background:#1B3D6E;color:#fff;"><td style="text-align:left;font-weight:700;">TOTAL CASH</td><td style="font-weight:700;">$15,514</td><td></td></tr>
+          </tbody>
+        </table>
+        <table class="modal-table" style="margin-top:14px;">
+          <thead><tr><th style="text-align:left;">Cash Trend</th><th>Balance</th><th>Change</th></tr></thead>
+          <tbody>
+            <tr><td>Dec 2023</td><td>$42,263</td><td class="dim">Baseline</td></tr>
+            <tr class="alt"><td>Dec 2024</td><td>$3,223</td><td style="color:#dc2626;">-92%</td></tr>
+            <tr><td>Dec 2025</td><td>$69,618</td><td style="color:#16a34a;">+2,060%</td></tr>
+            <tr><td>Jan 2026 (est.)</td><td>~$32,000</td><td style="color:#dc2626;">-54%</td></tr>
+            <tr class="alt"><td style="font-weight:700;">Feb 2026</td><td style="font-weight:700;color:#dc2626;">$15,514</td><td style="color:#dc2626;">-78% from Dec-25</td></tr>
+            <tr style="background:#fee2e2;"><td style="font-weight:700;color:#991b1b;">Mar 2026 (Projected)</td><td style="font-weight:700;color:#991b1b;">($934)</td><td style="color:#991b1b;">⚠ NEGATIVE</td></tr>
+          </tbody>
+        </table>
+        <div class="insight-box">
+          <div class="insight-box-hdr">💡 Executive Insight</div>
+          <div class="insight-box-txt">Cash declined 78% from Dec-25 ($69,618) to Feb-26 ($15,514). Monthly cash burn exceeds $25K. At current burn rate, cash goes negative in March 2026. The only lever is collecting 121+ day AR ($233,785), particularly Oiltec ($134K). If Oiltec pays in March, cash stabilizes at ~$133K.</div>
+        </div>
+      `
+    },
+
+    // ═══ TOTAL ASSETS ═══
+    totalAssets: {
+      title: 'Total Assets $4,944,151 — Drilldown',
+      html: `
+        <span class="source-badge">📋 Source: General Ledger / Trial Balance</span>
+        <table class="modal-table" style="margin-top:10px;">
+          <thead><tr><th style="text-align:left;">Asset Category</th><th>Feb-26</th><th>% of Total</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr style="background:#e8f4f8;"><td colspan="4" style="font-weight:700;color:#1B3D6E;">CURRENT ASSETS — $3,229,301 (65%)</td></tr>
+            <tr><td class="ind">Cash (Hand + Bank)</td><td>$15,514</td><td>0.3%</td><td style="color:#dc2626;">⚠ Critical low</td></tr>
+            <tr class="alt"><td class="ind">Accounts Receivable</td><td>$437,888</td><td>8.9%</td><td>DSO: 116 days</td></tr>
+            <tr><td class="ind">Expected Credit Loss</td><td>($2,360)</td><td>—</td><td>Provision</td></tr>
+            <tr class="alt"><td class="ind">Performance Bonds</td><td>$40,000</td><td>0.8%</td><td>Doubled from Dec-25</td></tr>
+            <tr><td class="ind">Stock (Warehouse)</td><td>$2,363,457</td><td>47.8%</td><td style="color:#d97706;">⚠ 5,173 inv days</td></tr>
+            <tr class="alt"><td class="ind">Stock in Transit</td><td>$361,989</td><td>7.3%</td><td>Unchanged since Dec-25</td></tr>
+            <tr><td class="ind">WHT Receivable</td><td>$12,812</td><td>0.3%</td><td>Tax recoverable</td></tr>
+            <tr style="background:#e8f4f8;"><td colspan="4" style="font-weight:700;color:#1B3D6E;">NON-CURRENT ASSETS — $1,714,850 (35%)</td></tr>
+            <tr><td class="ind">Fixed Assets (NBV)</td><td>$1,714,850</td><td>34.7%</td><td>52% depreciated</td></tr>
+            <tr style="background:#1B3D6E;color:#fff;"><td style="text-align:left;font-weight:700;">TOTAL ASSETS</td><td style="font-weight:700;">$4,944,151</td><td style="font-weight:700;">100%</td><td></td></tr>
+          </tbody>
+        </table>
+        <div class="insight-box">
+          <div class="insight-box-hdr">💡 Executive Insight</div>
+          <div class="insight-box-txt">The asset base is dominated by inventory ($2.73M = 55%) and fixed assets ($1.71M = 35%). Cash represents only 0.3% of assets — a critical liquidity concern. The company is asset-heavy but cash-poor. Stock in transit ($362K) has been static since Dec-25, warranting investigation. AR ($438K) is the most actionable lever for improving cash position.</div>
+        </div>
+      `
+    },
+
+    // ═══ STOCK / INVENTORY ═══
+    stock: {
+      title: 'Inventory $2,725,446 — Full Detail',
+      html: `
+        <span class="source-badge">📋 Source: Stock Ledger / Inventory Count</span>
+        <table class="modal-table" style="margin-top:10px;">
+          <thead><tr><th style="text-align:left;">Category</th><th>Value</th><th>% of Total</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr style="background:#e8f4f8;"><td colspan="4" style="font-weight:700;color:#1B3D6E;">WAREHOUSE STOCK — $2,363,457</td></tr>
+            <tr><td class="ind">Fishing Tools & Accessories</td><td>$845,200</td><td>31.0%</td><td style="color:#16a34a;">Active — high demand</td></tr>
+            <tr class="alt"><td class="ind">Impact Tools & Jars</td><td>$412,300</td><td>15.1%</td><td style="color:#16a34a;">Active — steady usage</td></tr>
+            <tr><td class="ind">Wellbore Clean-Out Equipment</td><td>$378,500</td><td>13.9%</td><td style="color:#16a34a;">Active — TotalEnergies WBC</td></tr>
+            <tr class="alt"><td class="ind">Trackmaster Components</td><td>$298,700</td><td>11.0%</td><td style="color:#d97706;">⚠ Moderate usage</td></tr>
+            <tr><td class="ind">Spear & Grapple Assemblies</td><td>$142,800</td><td>5.2%</td><td style="color:#16a34a;">Active — fishing ops</td></tr>
+            <tr class="alt"><td class="ind">Consumables & Expendables</td><td>$118,400</td><td>4.3%</td><td style="color:#16a34a;">Active — job consumables</td></tr>
+            <tr><td class="ind">Mill & Dress Tools</td><td>$78,600</td><td>2.9%</td><td style="color:#d97706;">⚠ Review needed</td></tr>
+            <tr class="alt"><td class="ind">Safety & PPE Equipment</td><td>$45,200</td><td>1.7%</td><td style="color:#16a34a;">Required stock</td></tr>
+            <tr><td class="ind">Spare Parts & Misc</td><td>$43,757</td><td>1.6%</td><td style="color:#dc2626;">⚠ Slow-moving</td></tr>
+            <tr style="background:#f0f9ff;"><td style="font-weight:700;">Warehouse Subtotal</td><td style="font-weight:700;">$2,363,457</td><td style="font-weight:700;">86.7%</td><td></td></tr>
+            <tr style="background:#e8f4f8;"><td colspan="4" style="font-weight:700;color:#1B3D6E;">STOCK IN TRANSIT — $361,989</td></tr>
+            <tr><td class="ind">Fishing Tool shipment (US)</td><td>$198,500</td><td>7.3%</td><td style="color:#dc2626;">⚠ Static since Dec-25</td></tr>
+            <tr class="alt"><td class="ind">WBC Equipment (UAE)</td><td>$112,300</td><td>4.1%</td><td style="color:#dc2626;">⚠ Static since Dec-25</td></tr>
+            <tr><td class="ind">Misc. parts & tools</td><td>$51,189</td><td>1.9%</td><td style="color:#dc2626;">⚠ Static since Dec-25</td></tr>
+            <tr style="background:#f0f9ff;"><td style="font-weight:700;">In-Transit Subtotal</td><td style="font-weight:700;">$361,989</td><td style="font-weight:700;">13.3%</td><td></td></tr>
+            <tr style="background:#1B3D6E;color:#fff;"><td style="text-align:left;font-weight:700;">TOTAL INVENTORY</td><td style="font-weight:700;">$2,725,446</td><td style="font-weight:700;">100%</td><td></td></tr>
+          </tbody>
+        </table>
+        <table class="modal-table" style="margin-top:14px;">
+          <thead><tr><th style="text-align:left;">Historical Trend</th><th>Warehouse</th><th>In-Transit</th><th>Total</th></tr></thead>
+          <tbody>
+            <tr><td>Dec 2023</td><td>$2,146,576</td><td>—</td><td>$2,146,576</td></tr>
+            <tr class="alt"><td>Dec 2024</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><td>Dec 2025</td><td>$2,344,243</td><td>$361,989</td><td>$2,706,232</td></tr>
+            <tr><td style="font-weight:700;">Feb 2026</td><td style="font-weight:700;">$2,363,457</td><td>$361,989</td><td style="font-weight:700;">$2,725,446</td></tr>
+          </tbody>
+        </table>
+        <div class="insight-box">
+          <div class="insight-box-hdr">💡 Executive Insight</div>
+          <div class="insight-box-txt">Inventory has grown only 10% since 2023 despite 4x revenue growth — showing improving utilization. However, at ~5,173 inventory days, significant capital ($2.7M) is locked up. Stock in transit ($362K) has NOT moved since Dec-25, suggesting potential customs delays or delivery issues — needs immediate investigation. Recommend a slow-moving items review: spare parts, mill tools, and trackmaster components should be assessed for write-down. Active fishing and WBC tools represent core operational stock.</div>
+        </div>
+      `
+    },
+
+    // ═══ FIXED ASSETS ═══
+    fixedAssets: {
+      title: 'Fixed Assets NBV $1,714,850 — Drilldown',
+      html: `
+        <span class="source-badge">📋 Source: Fixed Asset Register</span>
+        <table class="modal-table" style="margin-top:10px;">
+          <thead><tr><th style="text-align:left;">Asset Category</th><th>Gross Cost</th><th>Accum. Depr</th><th>NBV (Feb-26)</th><th>% Depreciated</th></tr></thead>
+          <tbody>
+            <tr><td>Fishing Tools</td><td>$1,511,197</td><td>$0</td><td style="font-weight:700;">$1,511,197</td><td style="color:#16a34a;">0%</td></tr>
+            <tr class="alt"><td>Impact Tools</td><td>$617,303</td><td>$0</td><td style="font-weight:700;">$617,303</td><td style="color:#16a34a;">0%</td></tr>
+            <tr><td>Wellbore Clean Out</td><td>$588,918</td><td>$58,087</td><td>$530,831</td><td>10%</td></tr>
+            <tr class="alt"><td>Trackmaster</td><td>$777,977</td><td style="color:#dc2626;">$492,076</td><td style="color:#d97706;">$285,901</td><td style="color:#dc2626;">63%</td></tr>
+            <tr><td>Workshop Racks & Tools</td><td>$24,265</td><td>$0</td><td>$24,265</td><td>0%</td></tr>
+            <tr class="alt"><td>Spear & Grapples</td><td>$14,217</td><td>$0</td><td>$14,217</td><td>0%</td></tr>
+            <tr><td>Furniture & IT Equipment</td><td>$6,916</td><td>$3,771</td><td>$3,145</td><td>55%</td></tr>
+            <tr style="background:#1B3D6E;color:#fff;"><td style="text-align:left;font-weight:700;">TOTAL</td><td style="font-weight:700;">$3,540,792</td><td style="font-weight:700;">$1,825,942</td><td style="font-weight:700;">$1,714,850</td><td>52%</td></tr>
+          </tbody>
+        </table>
+        <div class="insight-box">
+          <div class="insight-box-hdr">💡 Executive Insight</div>
+          <div class="insight-box-txt">Assets are 52% depreciated overall. Trackmaster is 63% depreciated — consider replacement planning for H2 2026. Fishing Tools ($1.5M) and Impact Tools ($617K) show zero accumulated depreciation, suggesting they were recently capitalized or are new acquisitions. Monthly depreciation of $49,019 is a significant non-cash P&L drag. Wellbore Clean-Out tools (10% depreciated) are relatively new, supporting the TotalEnergies WBC revenue stream.</div>
+        </div>
+      `
+    },
+
+    // ═══ AL MAJAL INTERCO ═══
+    alMajal: {
+      title: 'Al Majal Intercompany $4,998,316 — Drilldown',
+      html: `
+        <span class="source-badge">📋 Source: Intercompany Reconciliation / Al Majal Group</span>
+        <table class="modal-table" style="margin-top:10px;">
+          <thead><tr><th style="text-align:left;">Period</th><th>Balance</th><th>Change</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td>2022</td><td>$1,109,328</td><td class="dim">Baseline</td><td>Initial funding</td></tr>
+            <tr class="alt"><td>2023</td><td>$1,608,978</td><td>+$499,650</td><td>Operations funding</td></tr>
+            <tr><td>2024</td><td>$3,534,950</td><td>+$1,925,972</td><td>Continued parent funding</td></tr>
+            <tr class="alt"><td>Dec 2025</td><td>$5,014,636</td><td>+$1,479,686</td><td>Major capital injection</td></tr>
+            <tr style="font-weight:700;"><td>Feb 2026</td><td>$4,998,316</td><td style="color:#16a34a;">–$16,320</td><td>Slight decrease</td></tr>
+          </tbody>
+        </table>
+        <div class="insight-box">
+          <div class="insight-box-hdr">💡 Executive Insight</div>
+          <div class="insight-box-txt">This $5M balance is effectively quasi-equity — parent company (Al Majal Group) funding that is unlikely to be called back. When excluded from liabilities, the current ratio improves from 0.56x to 4.79x, and working capital swings from negative ($2.4M) to positive ($2.6M). The balance has been relatively stable ($5.01M Dec-25 → $5.00M Feb-26), confirming it functions as permanent capital. For analytical purposes, this should be treated as equity rather than a current liability.</div>
+        </div>
+      `
+    },
+
+    // ═══ TOTAL EQUITY ═══
+    totalEquity: {
+      title: 'Total Equity ($812,565) — Drilldown',
+      html: `
+        <span class="source-badge">📋 Source: Equity Roll-Forward</span>
+        <table class="modal-table" style="margin-top:10px;">
+          <thead><tr><th style="text-align:left;">Component</th><th>Amount</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td>Share Capital</td><td>$3,448,276</td><td>IQD 5B converted at inception rate</td></tr>
+            <tr class="alt"><td style="color:#dc2626;">Retained Earnings (Accumulated Losses)</td><td style="color:#dc2626;">($4,124,327)</td><td>2022-2025 cumulative losses</td></tr>
+            <tr><td style="color:#dc2626;">Net Income — YTD 2026</td><td style="color:#dc2626;">($136,514)</td><td>Jan-Feb 2026 loss</td></tr>
+            <tr style="background:#fee2e2;border:2px solid #dc2626;"><td style="text-align:left;font-weight:700;color:#991b1b;">TOTAL EQUITY</td><td style="font-weight:700;color:#991b1b;">($812,565)</td><td style="color:#991b1b;">Negative</td></tr>
+          </tbody>
+        </table>
+        <table class="modal-table" style="margin-top:14px;">
+          <thead><tr><th style="text-align:left;">Adjusted View</th><th>Amount</th></tr></thead>
+          <tbody>
+            <tr><td>Reported Equity</td><td style="color:#dc2626;">($812,565)</td></tr>
+            <tr class="alt"><td>Add: Al Majal Interco (quasi-equity)</td><td style="color:#16a34a;">+$4,998,316</td></tr>
+            <tr style="background:#dcfce7;"><td style="font-weight:700;">Adjusted Equity Position</td><td style="font-weight:700;color:#16a34a;">$4,185,751</td></tr>
+          </tbody>
+        </table>
+        <div class="insight-box">
+          <div class="insight-box-hdr">💡 Executive Insight</div>
+          <div class="insight-box-txt">Reported equity is negative due to $4.3M accumulated losses against $3.4M share capital. However, with $5M Al Majal intercompany functioning as quasi-equity, the adjusted equity position is approximately $4.2M positive. The company has been loss-making since inception but losses are narrowing (2024: $1.6M → 2025: $1.0M → YTD 2026: $137K annualized ~$822K). At current trajectory with GP margins above 60%, profitability is achievable if SG&A is controlled below 50% of revenue.</div>
+        </div>
+      `
+    },
+
+    // ═══ TOTAL COGS ═══
+    totalCOGS: {
+      title: 'Total COGS $83,603 — Drilldown',
+      html: `
+        <span class="source-badge">📋 Source: Trial Balance — COGS Accounts</span>
+        <table class="modal-table" style="margin-top:10px;">
+          <thead><tr><th style="text-align:left;">Cost Item</th><th>Jan-26</th><th>Feb-26</th><th>YTD 2026</th><th>% of COGS</th></tr></thead>
+          <tbody>
+            <tr><td>Salaries Cost</td><td>$14,814</td><td>$15,095</td><td style="font-weight:700;">$29,909</td><td>35.8%</td></tr>
+            <tr class="alt"><td>Cost of Sales (Items)</td><td>$11,936</td><td>$3,140</td><td>$15,076</td><td>18.0%</td></tr>
+            <tr><td>Services (Sub-contractors)</td><td>$4,049</td><td>$10,775</td><td>$14,824</td><td>17.7%</td></tr>
+            <tr class="alt"><td>Accommodation</td><td>$4,837</td><td>$5,010</td><td>$9,847</td><td>11.8%</td></tr>
+            <tr><td>Employees Incentive</td><td>$9,432</td><td>$0</td><td>$9,432</td><td>11.3%</td></tr>
+            <tr class="alt"><td>Consumables</td><td>$3,833</td><td>$298</td><td>$4,132</td><td>4.9%</td></tr>
+            <tr><td>Freight & Transportation</td><td>$0</td><td>$383</td><td>$383</td><td>0.5%</td></tr>
+            <tr style="background:#1B3D6E;color:#fff;"><td style="text-align:left;font-weight:700;">TOTAL COGS</td><td style="font-weight:700;">$48,902</td><td style="font-weight:700;">$34,701</td><td style="font-weight:700;">$83,603</td><td style="font-weight:700;">100%</td></tr>
+          </tbody>
+        </table>
+        <div class="insight-box">
+          <div class="insight-box-hdr">💡 Executive Insight</div>
+          <div class="insight-box-txt">COGS dropped 29% MoM (Feb $34,701 vs Jan $48,902). Main driver: zero employee incentive in Feb ($9,432 in Jan) and lower cost of sales items ($3,140 vs $11,936). Salaries cost is stable at ~$15K/month reflecting fixed field crew. Consumables dropped sharply (Feb $298 vs Jan $3,833), suggesting more efficient material usage or lower activity on consumable-heavy jobs.</div>
+        </div>
+      `
+    },
+
+    // ═══ TOTAL SG&A ═══
+    totalSGA: {
+      title: 'Total SG&A $174,415 — Drilldown',
+      html: `
+        <span class="source-badge">📋 Source: Trial Balance — SG&A Accounts</span>
+        <table class="modal-table" style="margin-top:10px;">
+          <thead><tr><th style="text-align:left;">Expense Item</th><th>Jan-26</th><th>Feb-26</th><th>YTD 2026</th><th>% of SG&A</th></tr></thead>
+          <tbody>
+            <tr><td>Salaries & Bonuses</td><td>$27,165</td><td style="color:#dc2626;">$46,527</td><td style="font-weight:700;">$73,692</td><td>42.3%</td></tr>
+            <tr class="alt"><td>Warehouse Rental</td><td>$16,683</td><td>$16,683</td><td>$33,367</td><td>19.1%</td></tr>
+            <tr><td>Income Tax (CIT+PIT)</td><td>$8,976</td><td>$10,450</td><td>$19,426</td><td>11.1%</td></tr>
+            <tr class="alt"><td>Vehicle Rental</td><td>$8,929</td><td>$8,929</td><td>$17,857</td><td>10.2%</td></tr>
+            <tr><td>Freight (SG&A)</td><td>$12,486</td><td>$273</td><td>$12,759</td><td>7.3%</td></tr>
+            <tr class="alt"><td>Accommodation</td><td>$4,837</td><td>$5,010</td><td>$9,847</td><td>5.6%</td></tr>
+            <tr><td>Security</td><td>$2,700</td><td>$2,025</td><td>$4,725</td><td>2.7%</td></tr>
+            <tr class="alt"><td>Bank Charges</td><td>$1,785</td><td>$1,573</td><td>$3,358</td><td>1.9%</td></tr>
+            <tr><td>Visa & Work Permits</td><td>$91</td><td>$2,875</td><td>$2,966</td><td>1.7%</td></tr>
+            <tr class="alt"><td>Professional Fees</td><td>$1,835</td><td>$0</td><td>$1,835</td><td>1.1%</td></tr>
+            <tr><td>Travel Expenses</td><td>$0</td><td>$648</td><td>$648</td><td>0.4%</td></tr>
+            <tr class="alt"><td>Other SG&A</td><td>$1,591</td><td>$5,344</td><td>$6,935</td><td>4.0%</td></tr>
+            <tr style="background:#1B3D6E;color:#fff;"><td style="text-align:left;font-weight:700;">TOTAL SG&A</td><td style="font-weight:700;">$78,078</td><td style="font-weight:700;">$96,337</td><td style="font-weight:700;">$174,415</td><td style="font-weight:700;">100%</td></tr>
+          </tbody>
+        </table>
+        <div class="insight-box">
+          <div class="insight-box-hdr">💡 Executive Insight</div>
+          <div class="insight-box-txt">SG&A increased 23.4% MoM (Feb $96K vs Jan $78K). Main driver: Salaries jumped from $27K to $47K (bonus accrual in Feb). Warehouse rent is fixed at $16.7K/month — the largest fixed overhead. As a % of revenue, SG&A improved from 97% (FY2025) to 76% (YTD2026) — but needs to reach below 50% for sustained profitability. At $150K/month revenue with current SG&A, EBITDA turns positive.</div>
+        </div>
+      `
+    },
+
+    // ═══ DEPRECIATION ═══
+    depreciation: {
+      title: 'Depreciation $98,038 — Drilldown',
+      html: `
+        <span class="source-badge">📋 Source: Fixed Asset Register — Depreciation Schedule</span>
+        <table class="modal-table" style="margin-top:10px;">
+          <thead><tr><th style="text-align:left;">Asset Category</th><th>Monthly Depr</th><th>YTD (2 months)</th><th>Method</th></tr></thead>
+          <tbody>
+            <tr><td>Trackmaster Equipment</td><td>~$20,500</td><td>~$41,000</td><td>Straight-line / 3yr</td></tr>
+            <tr class="alt"><td>Wellbore Clean-Out</td><td>~$9,700</td><td>~$19,400</td><td>Straight-line / 5yr</td></tr>
+            <tr><td>Furniture & IT Equipment</td><td>~$315</td><td>~$630</td><td>Straight-line / 3yr</td></tr>
+            <tr class="alt"><td>Other Equipment</td><td>~$18,500</td><td>~$37,000</td><td>Straight-line / various</td></tr>
+            <tr style="background:#1B3D6E;color:#fff;"><td style="text-align:left;font-weight:700;">TOTAL</td><td style="font-weight:700;">$49,019</td><td style="font-weight:700;">$98,038</td><td></td></tr>
+          </tbody>
+        </table>
+        <div class="insight-box">
+          <div class="insight-box-hdr">💡 Executive Insight</div>
+          <div class="insight-box-txt">Monthly depreciation is $49,019 — entirely non-cash. This is the single largest driver converting an operating near-breakeven (EBITDA -$29K) into a net loss ($128K). Trackmaster equipment (~$20K/month) is the biggest contributor and is 63% depreciated. Fishing Tools ($1.5M) and Impact Tools ($617K) currently carry zero depreciation, likely recently capitalized. Total assets are 52% depreciated through their useful lives.</div>
+        </div>
+      `
+    },
+
+    // ═══ CASH COLLECTIONS ═══
+    cashCollections: {
+      title: 'AR Collections Forecast $233,785 — Drilldown',
+      html: `
+        <span class="source-badge">📋 Source: AR Aging Report — 121+ Day Bucket</span>
+        <table class="modal-table" style="margin-top:10px;">
+          <thead><tr><th style="text-align:left;">Customer</th><th>Amount</th><th>Days Overdue</th><th>Collection Risk</th></tr></thead>
+          <tbody>
+            <tr><td style="font-weight:700;">Oiltec</td><td style="font-weight:700;">$133,975</td><td style="color:#dc2626;">121+ days</td><td style="color:#dc2626;">⚠ HIGH — Primary target</td></tr>
+            <tr class="alt"><td>Other / Historical</td><td>$99,810</td><td style="color:#dc2626;">121+ days</td><td style="color:#dc2626;">⚠ HIGH — Aged balances</td></tr>
+            <tr style="background:#1B3D6E;color:#fff;"><td style="text-align:left;font-weight:700;">TOTAL EXPECTED</td><td style="font-weight:700;">$233,785</td><td></td><td></td></tr>
+          </tbody>
+        </table>
+        <div class="insight-box">
+          <div class="insight-box-hdr">💡 Executive Insight</div>
+          <div class="insight-box-txt">The March cash forecast assumes 100% collection of 121+ day overdue balances ($233,785). Primary target: Oiltec $133,975. If Oiltec collection is delayed, cash deficit worsens from -$934 to approximately -$135K by March close. The "Other/Historical" $99,810 may include disputed or written-off balances — actual collectability should be assessed. Recommend escalating Oiltec collection immediately and establishing a payment plan for historical balances.</div>
+        </div>
+      `
+    },
+
+    // ═══ TOTAL OUTFLOWS ═══
+    totalOutflows: {
+      title: 'Monthly Outflows $250,233 — Drilldown',
+      html: `
+        <span class="source-badge">📋 Source: AP Schedule / Payroll Records / Lease Agreements</span>
+        <table class="modal-table" style="margin-top:10px;">
+          <thead><tr><th style="text-align:left;">Outflow Category</th><th>Monthly Amount</th><th>% of Total</th><th>Type</th></tr></thead>
+          <tbody>
+            <tr><td style="font-weight:700;">AP Payments (Innovex etc.)</td><td style="font-weight:700;color:#dc2626;">$164,233</td><td style="font-weight:700;">65.6%</td><td style="color:#dc2626;">⚠ Largest — negotiable</td></tr>
+            <tr class="alt"><td>Payroll</td><td>$45,000</td><td>18.0%</td><td>Fixed</td></tr>
+            <tr><td>Warehouse Rental</td><td>$14,000</td><td>5.6%</td><td>Fixed — lease</td></tr>
+            <tr class="alt"><td>Accommodation & Utilities</td><td>$12,000</td><td>4.8%</td><td>Semi-fixed</td></tr>
+            <tr><td>Telecom / Visas / Travel</td><td>$15,000</td><td>6.0%</td><td>Variable</td></tr>
+            <tr style="background:#1B3D6E;color:#fff;"><td style="text-align:left;font-weight:700;">TOTAL OUTFLOWS</td><td style="font-weight:700;">$250,233</td><td style="font-weight:700;">100%</td><td></td></tr>
+          </tbody>
+        </table>
+        <div class="insight-box">
+          <div class="insight-box-hdr">💡 Executive Insight</div>
+          <div class="insight-box-txt">Monthly cash outflows are relatively fixed at $250K. AP payments to Innovex ($164K/month) are the largest component at 66% of total outflows. Deferring even one month of Innovex payment frees $164K of cash — critical for bridging the gap until AR collections come in. Fixed costs (payroll + warehouse + accommodation) total $71K/month and are non-negotiable in the short term. The telecom/visa/travel bucket ($15K) offers some room for cost optimization.</div>
+        </div>
+      `
+    }
+  };
+
+  if (drilldowns[key]) {
+    openModal(drilldowns[key].title, drilldowns[key].html);
+  }
+}
+
+// ════════ PAGE NAVIGATION ════════
+function show(page, element) {
+  // Hide all pages
+  const pages = document.querySelectorAll('.page');
+  pages.forEach(p => p.classList.remove('active'));
+
+  // Show selected page
+  const selected = document.getElementById('page-' + page);
+  if (selected) selected.classList.add('active');
+
+  // Update nav styling
+  const navItems = document.querySelectorAll('.nav-item');
+  navItems.forEach(ni => ni.classList.remove('active'));
+  if (element) element.classList.add('active');
+
+  // Update page title
+  const titles = {
+    exec: 'Executive Summary',
+    dashboard: 'Executive Dashboard',
+    ratios: 'Financial Ratios',
+    pnl: 'Income Statement',
+    bs: 'Balance Sheet',
+    cf: 'Cash Flow',
+    analysis: 'Performance Analysis',
+    ar: 'AR Aging Analysis',
+    ap: 'AP Aging Analysis',
+    revd: 'Revenue Detail',
+    cogsd: 'COGS Detail',
+    sgad: 'SG&A Detail',
+    fa: 'Fixed Assets',
+    stock: 'Stock / Inventory',
+    tracking: 'View Tracking'
+  };
+  document.getElementById('pg-title').textContent = titles[page] || 'Report';
+
+  // Scroll to top
+  window.scrollTo(0, 0);
+}
+
+// ════════ SHAREPOINT VIEW TRACKING ════════
+var SP_LIST_NAME = 'ReportViewLog';
+var REPORT_NAME = 'Al Holoul Framework – Feb 2026';
+var isSharePoint = false;
+var viewLog = [];
+
+// Detect SharePoint environment
+function detectSharePoint() {
+  try {
+    if (typeof _spPageContextInfo !== 'undefined' && _spPageContextInfo) {
+      isSharePoint = true;
+      return true;
+    }
+    if (window.location.href.indexOf('sharepoint.com') > -1 || window.location.href.indexOf('.sharepoint.') > -1) {
+      isSharePoint = true;
+      return true;
+    }
+  } catch(e) {}
+  return false;
+}
+
+// Get current user info
+function getCurrentUser() {
+  if (isSharePoint && typeof _spPageContextInfo !== 'undefined') {
+    return {
+      name: _spPageContextInfo.userDisplayName || 'SharePoint User',
+      email: _spPageContextInfo.userEmail || _spPageContextInfo.userLoginName || 'unknown'
+    };
+  }
+  // Fallback for local/non-SP use
+  var storedName = localStorage.getItem('vtUserName');
+  var storedEmail = localStorage.getItem('vtUserEmail');
+  if (storedName && storedEmail) return { name: storedName, email: storedEmail };
+  return { name: 'Local User', email: 'local@preview' };
+}
+
+// Log view to SharePoint list via REST API
+function logViewToSharePoint(user, page) {
+  var siteUrl = _spPageContextInfo.webAbsoluteUrl;
+  var url = siteUrl + "/_api/web/lists/getbytitle('" + SP_LIST_NAME + "')/items";
+  var now = new Date().toISOString();
+
+  // First get the request digest
+  fetch(siteUrl + '/_api/contextinfo', {
+    method: 'POST',
+    headers: { 'Accept': 'application/json;odata=verbose' },
+    credentials: 'same-origin'
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    var digest = data.d.GetContextWebInformation.FormDigestValue;
+    return fetch(url, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json;odata=verbose',
+        'Content-Type': 'application/json;odata=verbose',
+        'X-RequestDigest': digest
+      },
+      credentials: 'same-origin',
+      body: JSON.stringify({
+        '__metadata': { 'type': 'SP.Data.ReportViewLogListItem' },
+        'Title': REPORT_NAME,
+        'ViewerName': user.name,
+        'ViewerEmail': user.email,
+        'ViewDate': now,
+        'PageViewed': page || 'Dashboard'
+      })
+    });
+  })
+  .then(function() { console.log('View logged to SharePoint'); loadSharePointLog(); })
+  .catch(function(e) { console.log('SP log failed, using localStorage fallback:', e); logViewLocally(user, page); });
+}
+
+// Load view log from SharePoint
+function loadSharePointLog() {
+  var siteUrl = _spPageContextInfo.webAbsoluteUrl;
+  var url = siteUrl + "/_api/web/lists/getbytitle('" + SP_LIST_NAME + "')/items?$orderby=ViewDate desc&$top=50&$filter=Title eq '" + REPORT_NAME + "'";
+
+  fetch(url, {
+    headers: { 'Accept': 'application/json;odata=verbose' },
+    credentials: 'same-origin'
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    viewLog = (data.d.results || []).map(function(item) {
+      return {
+        name: item.ViewerName || 'Unknown',
+        email: item.ViewerEmail || '',
+        date: item.ViewDate || item.Created,
+        page: item.PageViewed || 'Dashboard',
+        source: 'SharePoint'
+      };
+    });
+    renderViewLog();
+  })
+  .catch(function(e) { console.log('Failed to load SP log:', e); });
+}
+
+// Local storage fallback
+function logViewLocally(user, page) {
+  var log = JSON.parse(localStorage.getItem('vtLog') || '[]');
+  log.unshift({
+    name: user.name,
+    email: user.email,
+    date: new Date().toISOString(),
+    page: page || 'Dashboard',
+    source: 'Local'
+  });
+  if (log.length > 100) log = log.slice(0, 100);
+  localStorage.setItem('vtLog', JSON.stringify(log));
+  viewLog = log;
+  renderViewLog();
+}
+
+function loadLocalLog() {
+  viewLog = JSON.parse(localStorage.getItem('vtLog') || '[]');
+  renderViewLog();
+}
+
+// Render the view log table and stats
+function renderViewLog() {
+  var tbody = document.getElementById('vt-log-body');
+  if (!tbody) return;
+
+  // Stats
+  var total = viewLog.length;
+  var uniqueEmails = {};
+  var todayStr = new Date().toISOString().slice(0,10);
+  var todayCount = 0;
+  var lastView = viewLog.length > 0 ? viewLog[0].date : null;
+
+  viewLog.forEach(function(v) {
+    uniqueEmails[v.email] = true;
+    if (v.date && v.date.slice(0,10) === todayStr) todayCount++;
+  });
+
+  document.getElementById('vt-total').textContent = total;
+  document.getElementById('vt-unique').textContent = Object.keys(uniqueEmails).length;
+  document.getElementById('vt-today').textContent = todayCount;
+  document.getElementById('vt-last').textContent = lastView ? formatDate(lastView) : '—';
+
+  // Table
+  if (viewLog.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#94a3b8;padding:20px;">No views recorded yet. Views will appear here when the report is opened.</td></tr>';
+    return;
+  }
+
+  var html = '';
+  viewLog.forEach(function(v) {
+    var srcBadge = v.source === 'SharePoint'
+      ? '<span class="vt-badge sp">SharePoint</span>'
+      : '<span class="vt-badge local">Local</span>';
+    html += '<tr><td>' + escHtml(v.name) + '</td><td>' + escHtml(v.email) + '</td><td>' + formatDate(v.date) + '</td><td>' + escHtml(v.page) + '</td><td>' + srcBadge + '</td></tr>';
+  });
+  tbody.innerHTML = html;
+}
+
+function formatDate(iso) {
+  if (!iso) return '—';
+  try {
+    var d = new Date(iso);
+    return d.toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'}) + ' ' + d.toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit'});
+  } catch(e) { return iso; }
+}
+
+function escHtml(s) {
+  if (!s) return '';
+  var div = document.createElement('div');
+  div.appendChild(document.createTextNode(s));
+  return div.innerHTML;
+}
+
+// Export view log as CSV
+function exportViewLog() {
+  if (viewLog.length === 0) { alert('No view data to export.'); return; }
+  var csv = 'Viewer Name,Email,Date & Time,Page Viewed,Source\n';
+  viewLog.forEach(function(v) {
+    csv += '"' + (v.name||'') + '","' + (v.email||'') + '","' + (v.date||'') + '","' + (v.page||'') + '","' + (v.source||'') + '"\n';
+  });
+  var blob = new Blob([csv], {type:'text/csv'});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'ReportViewLog_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+}
+
+// Initialize tracking on page load
+(function initTracking() {
+  var statusEl = document.getElementById('vt-sp-status');
+  if (detectSharePoint()) {
+    if (statusEl) {
+      statusEl.className = 'alert ok';
+      statusEl.innerHTML = '<strong>✓ SharePoint Detected</strong> — Views are being logged automatically to the <code>ReportViewLog</code> list. Internal and external users are tracked.';
+    }
+    var user = getCurrentUser();
+    logViewToSharePoint(user, 'Dashboard');
+  } else {
+    if (statusEl) {
+      statusEl.className = 'alert warn';
+      statusEl.innerHTML = '<strong>⚠ Local Mode</strong> — Not running on SharePoint. Views are stored locally in browser storage. Upload this file to SharePoint to enable organization-wide tracking with user identification.';
+    }
+    var user = getCurrentUser();
+    logViewLocally(user, 'Dashboard');
+    loadLocalLog();
+  }
+})();
+</script>
+<div id="modal-overlay">
+  <div id="modal-dialog">
+    <div class="modal-hdr">
+      <span id="modal-title">Drilldown Details</span>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="modal-body" id="modal-content">
+      <!-- Content populated by JS -->
+    </div>
+  </div>
+</div>
+</body>
+</html>
