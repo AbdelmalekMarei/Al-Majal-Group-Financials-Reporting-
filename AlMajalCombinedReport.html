@@ -8993,6 +8993,1134 @@ function initCashFlow() {
   console.log('[Section 23] Comprehensive drill-down completion: BS tables, AR/AP onclick, Overview, Bank, Unearned, SecDep, OpenItems, Loans.');
 })();
 // END Section 23
+
+// ================== SECTION 24 — BS 3-TABLE LAYOUT (ENTITIES AS ROWS) + TOTAL SUM FIX ==================
+(function(){
+  'use strict';
+
+  // ─── helpers ───
+  function fV(v){
+    var n=+v||0, neg=n<0, a=Math.abs(n), s;
+    if(a>=1e9) s='$'+(a/1e9).toFixed(2)+'B';
+    else if(a>=1e6) s='$'+(a/1e6).toFixed(2)+'M';
+    else if(a>=1e3) s='$'+(a/1e3).toFixed(0)+'K';
+    else if(a>0)    s='$'+a.toFixed(0);
+    else s='—';
+    return neg?'<span style="color:#CC3333">('+s+')</span>':s;
+  }
+
+  // ─────────────────────────────────────────────────────────────────
+  // BALANCE SHEET — 3 separate full-width tables
+  //   Entities = ROWS (0-10 individual + 11 Total Sum + 12 Consolidated)
+  //   Key metrics = COLUMNS
+  //   TOTAL SUM FIX: idx 11 is computed as sum(idx 0..10)
+  // ─────────────────────────────────────────────────────────────────
+  var _prevBS = window.initBS;
+  window.initBS = function(){
+    _prevBS.apply(this, arguments);
+
+    var bs  = FP_DATA.bs26;
+    var cos = bs.companies;   // 15 entries, idx 0-10 individual, 11 Total Sum, 12 Consolidated
+    var rd  = bs.rows;
+
+    var ownRow = rd['2026-01-31 00:00:00'] || [];
+    function ownPct(i){ var v=ownRow[i]||0; return v>0?(v*100).toFixed(0)+'%':'—'; }
+    function G(rn,i){ var a=rd[rn]; return (a&&a[i]!=null)?(+a[i]||0):0; }
+
+    // KEY FIX: idx 11 (Total Sum) is all-zero in source — compute dynamically
+    function Gv(rn,idx){
+      if(idx===11){ var t=0; for(var k=0;k<=10;k++) t+=G(rn,k); return t; }
+      return G(rn,idx);
+    }
+
+    // Display entities: 0-10 individual + 11 Total Sum + 12 Consolidated
+    var dispIdx = [0,1,2,3,4,5,6,7,8,9,10,11,12];
+
+    function cell(v, isTot, isConsolidated){
+      var neg = v<0;
+      var color = neg ? 'color:#CC3333;' : '';
+      var fw = (isTot||isConsolidated) ? 'font-weight:700;' : '';
+      return '<td style="padding:5px 10px;text-align:right;'+color+fw+'">'+fV(v)+'</td>';
+    }
+
+    function buildTable(sectionId, title, iconHex, colDefs){
+      var old = document.getElementById(sectionId);
+      if(old) old.remove();
+
+      var wrap = document.createElement('div');
+      wrap.id = sectionId;
+      wrap.style.cssText = 'margin-top:24px;background:#fff;border-radius:12px;'+
+        'box-shadow:0 2px 12px rgba(0,0,0,0.09);overflow:hidden;';
+
+      // Header
+      var hdr = '<div style="background:#1F2D5A;color:#fff;padding:13px 20px;'+
+        'display:flex;align-items:center;gap:10px">'+
+        '<span style="font-size:20px">'+iconHex+'</span>'+
+        '<span style="font-size:14px;font-weight:700;letter-spacing:0.3px">'+title+'</span>'+
+        '<span style="margin-left:auto;font-size:11px;opacity:0.7">Jan 2026 \u00B7 All figures USD</span>'+
+        '</div>';
+
+      // Column headers
+      var tHdr = '<thead><tr style="background:#2C3E6B;color:#fff;font-size:11px">'+
+        '<th style="padding:8px 12px;text-align:left;min-width:40px;position:sticky;left:0;background:#2C3E6B">#</th>'+
+        '<th style="padding:8px 12px;text-align:left;min-width:150px">Entity</th>'+
+        '<th style="padding:8px 8px;text-align:center;min-width:52px">Own%</th>';
+      colDefs.forEach(function(c){
+        tHdr += '<th style="padding:8px 10px;text-align:right;min-width:'+(c.w||95)+'px">'+c.label+'</th>';
+      });
+      tHdr += '</tr></thead>';
+
+      // Rows
+      var tBody = '<tbody>';
+      dispIdx.forEach(function(idx, pos){
+        var co = (cos[idx]||'—').trim();
+        var isTotSum = idx===11;
+        var isCons   = idx===12;
+        var isTot    = isTotSum || isCons;
+
+        var bg = isCons   ? 'background:#C9A84C;color:#1F2D5A;font-weight:700' :
+                 isTotSum ? 'background:#1F2D5A;color:#fff;font-weight:700'    :
+                 pos%2===0? 'background:#fff' : 'background:#F8F9FA';
+
+        tBody += '<tr style="'+bg+';border-bottom:1px solid #EAECF0">';
+        // # column
+        tBody += '<td style="padding:5px 12px;position:sticky;left:0;background:inherit;font-size:11px;'+
+                 'color:inherit;font-weight:600">'+(isTot?'':pos+1)+'</td>';
+        // Entity name
+        tBody += '<td style="padding:5px 12px;white-space:nowrap;font-weight:'+(isTot?700:500)+'">'+co+'</td>';
+        // Own%
+        tBody += '<td style="padding:5px 8px;text-align:center;font-size:11px">'+(isTot?'—':ownPct(idx))+'</td>';
+        // Metric columns
+        colDefs.forEach(function(c){
+          tBody += cell(Gv(c.row, idx), isTot, isCons);
+        });
+        tBody += '</tr>';
+      });
+      tBody += '</tbody>';
+
+      wrap.innerHTML = hdr +
+        '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">'+
+        tHdr + tBody + '</table></div>';
+      return wrap;
+    }
+
+    var pg = document.getElementById('page-balancesheet');
+    if(!pg) return;
+
+    // Clean up all old section-24 elements
+    ['bs24-assets','bs24-liab','bs24-equity','bs24-companies-grid',
+     'bs24-totalsum','bs24-consolidated'].forEach(function(id){
+      var el = document.getElementById(id); if(el) el.remove();
+    });
+
+    // ── ASSETS TABLE ──
+    pg.appendChild(buildTable('bs24-assets','\uD83C\uDFE2  ASSETS — Balance Sheet by Entity','\uD83C\uDFE2',[
+      {label:'Cash & Equiv',       w:95,  row:'Cash And Cash Equiv'},
+      {label:'Accounts Rec.',      w:95,  row:'Accounts Receivable'},
+      {label:'Accrued Rec.',       w:88,  row:'Accrued Receivable'},
+      {label:'Prepaid Exp.',       w:85,  row:'Prepaid expenses'},
+      {label:'Inventory',          w:85,  row:'Inventory'},
+      {label:'Investments',        w:85,  row:'Investment'},
+      {label:'Total Curr. Assets', w:105, row:'Total current assets'},
+      {label:'PPE (Gross)',         w:88,  row:'Property & Equipment'},
+      {label:'Acc. Depreciation',  w:95,  row:'Accumulated Deprecation'},
+      {label:'TOTAL ASSETS',       w:105, row:'Total Assets'},
+    ]));
+
+    // ── LIABILITIES TABLE ──
+    pg.appendChild(buildTable('bs24-liab','\uD83D\uDCCB  LIABILITIES — Balance Sheet by Entity','\uD83D\uDCCB',[
+      {label:'Accounts Pay.',      w:95,  row:'Accounts Payable'},
+      {label:'Unearned Rev.',      w:88,  row:'Unearned revenue'},
+      {label:'PIT Provision',      w:85,  row:'PIT Expense Provisions'},
+      {label:'CIT Provision',      w:85,  row:'CIT Expense Provisions'},
+      {label:'Security Dep.',      w:85,  row:'Security Deposit'},
+      {label:'Deferred Rev.',      w:85,  row:'Deferred Revenue'},
+      {label:'Lease Liability',    w:88,  row:'Lease Liability'},
+      {label:'Other Payables',     w:88,  row:'Other Payables'},
+      {label:'Related Party',      w:88,  row:'Related Party'},
+      {label:'Tot. Curr. Liab.',   w:105, row:'Total current liabilities'},
+      {label:'Bank Debt',          w:85,  row:'Bank debt'},
+      {label:'Interest Pay.',      w:85,  row:'Interest Payable'},
+      {label:'TOTAL LIABILITIES',  w:110, row:'Total Liabilities'},
+    ]));
+
+    // ── EQUITY TABLE ──
+    pg.appendChild(buildTable('bs24-equity','\uD83D\uDCBC  EQUITY & NET WORTH — Balance Sheet by Entity','\uD83D\uDCBC',[
+      {label:'Equity Capital',     w:95,  row:'Equity Capital'},
+      {label:'Statutory Res.',     w:90,  row:'Statutory Reserves Account'},
+      {label:'Retained Earn.',     w:95,  row:'Retained Earnings'},
+      {label:'Net Income',         w:95,  row:'Net income (incl. share from subsidiaries)'},
+      {label:'Tot. Liab + Equity', w:110, row:"Total Liabilities & Shareholder's Equity"},
+    ]));
+  };
+
+  // ─── AR/AP grid: 3-col layout ───
+  (function(){
+    var _prevA = window.initAgeing;
+    window.initAgeing = function(){
+      _prevA.apply(this, arguments);
+      var arEl = document.getElementById('ar-kpis');
+      if(arEl) arEl.style.gridTemplateColumns = 'repeat(3,1fr)';
+      var apEl = document.getElementById('ap-kpis');
+      if(apEl) apEl.style.gridTemplateColumns = 'repeat(3,1fr)';
+    };
+  })();
+
+  console.log('[Section 24] BS 3-table layout + Total Sum fix applied.');
+})();
+// END Section 24
+
+// ================== SECTION 25 — FULL AR/AP CUSTOMER/VENDOR AGEING MODAL ==================
+(function(){
+  'use strict';
+
+  // ── Create specialized modal (once) ─────────────────────────────────
+  if(!document.getElementById('aamod-bg')){
+    var mo = document.createElement('div');
+    mo.id = 'aamod-bg';
+    mo.style.cssText = 'display:none;position:fixed;top:0;left:0;width:100%;height:100%;'+
+      'background:rgba(10,10,30,0.65);z-index:10000;overflow-y:auto;padding:20px 16px;box-sizing:border-box';
+    mo.innerHTML =
+      '<div style="max-width:1280px;margin:0 auto;background:#fff;border-radius:14px;'+
+      'overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,0.35)">'+
+
+      // ── Header ──
+      '<div id="aamod-hdr" style="background:#1F2D5A;color:#fff;padding:14px 22px;'+
+      'display:flex;align-items:center;gap:14px">'+
+      '<span id="aamod-icon" style="font-size:24px"></span>'+
+      '<div style="flex:1">'+
+        '<div id="aamod-title" style="font-size:15px;font-weight:800;letter-spacing:0.2px"></div>'+
+        '<div id="aamod-subtitle" style="font-size:11px;opacity:0.7;margin-top:3px"></div>'+
+      '</div>'+
+      '<button onclick="window.closeAAMod()" style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);'+
+      'color:#fff;padding:7px 16px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600">\u2715 Close</button>'+
+      '</div>'+
+
+      // ── Toolbar ──
+      '<div style="padding:14px 22px;background:#F0F2F8;border-bottom:1px solid #E5E7EB;'+
+      'display:flex;gap:12px;flex-wrap:wrap;align-items:center">'+
+      '<input id="aamod-search" type="text" placeholder="\uD83D\uDD0D  Search name or BU\u2026" '+
+      'style="flex:1;min-width:200px;padding:8px 12px;border:1px solid #D1D5DB;border-radius:8px;font-size:12px">'+
+      '<select id="aamod-bufilter" style="padding:8px 12px;border:1px solid #D1D5DB;'+
+      'border-radius:8px;font-size:12px;min-width:160px">'+
+      '<option value="">All Business Units</option></select>'+
+      '<select id="aamod-sortby" style="padding:8px 12px;border:1px solid #D1D5DB;'+
+      'border-radius:8px;font-size:12px">'+
+      '<option value="amount">Sort: Total (High\u2192Low)</option>'+
+      '<option value="overdue">Sort: Overdue First</option>'+
+      '<option value="name">Sort: Name A\u2192Z</option>'+
+      '</select>'+
+      '<span id="aamod-count" style="font-size:11px;color:#6B7280;white-space:nowrap;font-weight:600"></span>'+
+      '</div>'+
+
+      // ── Finding bar ──
+      '<div id="aamod-finding" style="padding:10px 22px;background:#FFFBEB;border-bottom:1px solid #F3D066;'+
+      'font-size:12px;color:#92400E;display:flex;gap:8px;align-items:flex-start">'+
+      '<span style="font-size:14px">\uD83D\uDCA1</span><span id="aamod-finding-text"></span>'+
+      '</div>'+
+
+      // ── Table ──
+      '<div style="overflow-x:auto;max-height:55vh;overflow-y:auto">'+
+      '<table style="width:100%;border-collapse:collapse;font-size:12px">'+
+      '<thead><tr id="aamod-thead" style="background:#2C3E6B;color:#fff;position:sticky;top:0;z-index:2"></tr></thead>'+
+      '<tbody id="aamod-tbody"></tbody>'+
+      '</table></div>'+
+
+      // ── Footer summary ──
+      '<div id="aamod-footer" style="padding:12px 22px;background:#F9FAFB;border-top:2px solid #E5E7EB;'+
+      'display:flex;gap:24px;flex-wrap:wrap;font-size:11px;color:#374151;align-items:center"></div>'+
+      '</div>';
+
+    document.body.appendChild(mo);
+    mo.addEventListener('click', function(e){ if(e.target===mo) window.closeAAMod(); });
+    document.addEventListener('keydown', function(e){ if(e.key==='Escape') window.closeAAMod(); });
+  }
+
+  window.closeAAMod = function(){
+    document.getElementById('aamod-bg').style.display = 'none';
+  };
+
+  // ── Formatter ───────────────────────────────────────────────────────
+  function fmt(v){
+    var n=+v||0, neg=n<0, a=Math.abs(n), s;
+    if(a>=1e6)      s='$'+(a/1e6).toFixed(2)+'M';
+    else if(a>=1e3) s='$'+(a/1e3).toFixed(0)+'K';
+    else if(a>0)    s='$'+a.toFixed(0);
+    else return '<span style="color:#D1D5DB">\u2014</span>';
+    return neg ? '<span style="color:#DC2626;font-weight:600">('+s+')</span>' : s;
+  }
+
+  function ageColor(v, w, d){
+    var n=+v||0;
+    if(n<=0)   return '#9CA3AF';
+    if(n>=d)   return '#DC2626';
+    if(n>=w)   return '#D97706';
+    return '#374151';
+  }
+
+  // ── Main function ────────────────────────────────────────────────────
+  window.showAgingDD = function(type, focusBucket){
+    var isAR  = type==='ar';
+    var data  = isAR ? AGEING_DATA.ar : AGEING_DATA.ap;
+    var items = isAR ? (data.customers||[]) : (data.vendors||[]);
+    var total = data.total;
+    var nameKey = isAR ? 'customer' : 'vendor';
+
+    // ── Column definitions ──
+    var arCols = [
+      {k:'#',       l:'#',         w:36,  fix:true},
+      {k:'name',    l:'Customer',  w:230, fix:true},
+      {k:'bu',      l:'BU',        w:110},
+      {k:'amount',  l:'Total AR',  w:100, num:true, hbg:'#1F2D5A',hcl:'#fff'},
+      {k:'not_due', l:'Not Due',   w:90,  num:true, hbg:'#1A6B3C',hcl:'#fff'},
+      {k:'d0_30',   l:'0\u201330d', w:82, num:true},
+      {k:'d31_60',  l:'31\u201360d',w:82, num:true, w1:50000,  d1:200000},
+      {k:'d61_90',  l:'61\u201390d',w:82, num:true, w1:30000,  d1:100000},
+      {k:'d91_120', l:'91\u2013120d',w:88,num:true, w1:20000,  d1:80000},
+      {k:'over120', l:'\u003E120d', w:82, num:true, w1:10000,  d1:50000},
+    ];
+    var apCols = [
+      {k:'#',       l:'#',         w:36,  fix:true},
+      {k:'name',    l:'Vendor',    w:240, fix:true},
+      {k:'bu',      l:'BU',        w:110},
+      {k:'amount',  l:'Total AP',  w:100, num:true, hbg:'#7B1D1D',hcl:'#fff'},
+      {k:'future',  l:'Future',    w:90,  num:true, hbg:'#1A6B3C',hcl:'#fff'},
+      {k:'d0_30',   l:'0\u201330d', w:82, num:true},
+      {k:'d31_60',  l:'31\u201360d',w:82, num:true, w1:50000,  d1:200000},
+      {k:'d61_90',  l:'61\u201390d',w:82, num:true, w1:30000,  d1:100000},
+      {k:'d90_120', l:'90\u2013120d',w:88,num:true, w1:20000,  d1:80000},
+      {k:'over121', l:'\u003E121d', w:82, num:true, w1:10000,  d1:50000},
+    ];
+    var cols = isAR ? arCols : apCols;
+
+    // ── Populate BU filter ──
+    var buSet = {}; items.forEach(function(x){ buSet[x.bu]=1; });
+    var buList = Object.keys(buSet).sort();
+    var buSel = document.getElementById('aamod-bufilter');
+    buSel.innerHTML = '<option value="">All Business Units</option>';
+    buList.forEach(function(b){ var o=document.createElement('option'); o.value=o.textContent=b; buSel.appendChild(o); });
+
+    // ── Build thead ──
+    var thead = document.getElementById('aamod-thead');
+    thead.innerHTML = cols.map(function(c){
+      var bg  = c.hbg ? 'background:'+c.hbg+';color:'+c.hcl+';' : '';
+      var hi  = (c.k===focusBucket) ? 'background:#1A6B3C;color:#fff;' : bg;
+      var ta  = c.num ? 'text-align:right;' : '';
+      return '<th style="padding:8px 10px;'+ta+hi+'min-width:'+c.w+'px;white-space:nowrap;'+
+             'border-right:1px solid rgba(255,255,255,0.1)">'+c.l+'</th>';
+    }).join('');
+
+    // ── Row builder ──
+    function buildRows(filtered){
+      var sortVal = (document.getElementById('aamod-sortby')||{}).value || 'amount';
+      if(sortVal==='amount')  filtered = filtered.slice().sort(function(a,b){ return b.amount-a.amount; });
+      else if(sortVal==='overdue') filtered = filtered.slice().sort(function(a,b){
+        var oa=(+a.d91_120||0)+(+a['over120']||+a['over121']||0);
+        var ob=(+b.d91_120||0)+(+b['over120']||+b['over121']||0);
+        return ob-oa;
+      });
+      else filtered = filtered.slice().sort(function(a,b){ return (a[nameKey]||'').localeCompare(b[nameKey]||''); });
+
+      var html = '';
+      filtered.forEach(function(x, idx){
+        var bg = idx%2===0 ? '#fff' : '#F9FAFB';
+        html += '<tr style="background:'+bg+';border-bottom:1px solid #F3F4F6">';
+        cols.forEach(function(c){
+          var v, disp, style='';
+          if(c.k==='#'){
+            disp='<span style="color:#9CA3AF;font-size:10px">'+(idx+1)+'</span>';
+          } else if(c.k==='name'){
+            v = x[nameKey]||'';
+            disp='<span style="font-weight:500;color:#111827">'+v+'</span>';
+          } else if(c.k==='bu'){
+            v = x.bu||'';
+            disp='<span style="background:#E5E7EB;padding:2px 7px;border-radius:4px;font-size:10px;'+
+                 'color:#374151;white-space:nowrap">'+v+'</span>';
+          } else {
+            v = +x[c.k]||0;
+            var isFocus  = (c.k===focusBucket) && v>0;
+            var clr = c.w1 ? ageColor(v,c.w1,c.d1) : (v<0?'#DC2626':'#374151');
+            style = 'color:'+clr+';text-align:right;'+(isFocus?'background:#FEF9C3;font-weight:700;':'');
+            disp = fmt(v);
+          }
+          var ta = c.num ? 'text-align:right;' : '';
+          html += '<td style="padding:5px 10px;'+ta+style+'border-right:1px solid #F3F4F6">'+disp+'</td>';
+        });
+        html += '</tr>';
+      });
+
+      // Totals row
+      html += '<tr style="background:#1F2D5A;color:#fff;font-weight:700;border-top:3px solid #C9A84C">';
+      cols.forEach(function(c, ci){
+        if(ci===0){ html+='<td style="padding:7px 10px"></td>'; return; }
+        if(c.k==='name'){ html+='<td style="padding:7px 10px">GROUP TOTAL \u2014 '+filtered.length+' '+(isAR?'customers':'vendors')+'</td>'; return; }
+        if(c.k==='bu')  { html+='<td></td>'; return; }
+        var sum = filtered.reduce(function(s,x){ return s+(+x[c.k]||0); },0);
+        html+='<td style="padding:7px 10px;text-align:right">'+(sum!==0?fmt(sum):'\u2014')+'</td>';
+      });
+      html += '</tr>';
+
+      document.getElementById('aamod-tbody').innerHTML = html;
+
+      var visTotal = filtered.reduce(function(s,x){ return s+(+x.amount||0); },0);
+      document.getElementById('aamod-count').textContent =
+        filtered.length+' / '+items.length+(isAR?' customers':' vendors')+
+        ' \u00B7 $'+(visTotal/1e6).toFixed(2)+'M';
+    }
+
+    // ── Initial render ──
+    buildRows(items.slice());
+
+    // ── Header labels ──
+    var bucketLabel = {
+      '':'All',not_due:'Not Due',future:'Future',
+      d0_30:'0-30d',d31_60:'31-60d',d61_90:'61-90d',
+      d91_120:'91-120d',d90_120:'90-120d',over120:'>120d',over121:'>121d'
+    };
+    document.getElementById('aamod-icon').textContent = isAR ? '\uD83D\uDCCA' : '\uD83D\uDCCB';
+    document.getElementById('aamod-title').textContent =
+      (isAR?'Accounts Receivable (AR)':'Accounts Payable (AP)')+
+      ' Ageing — '+(bucketLabel[focusBucket||'']||'')+' — January 2026';
+    document.getElementById('aamod-subtitle').textContent =
+      items.length+(isAR?' customers':' vendors')+
+      ' \u00B7 Total: $'+(total/1e6).toFixed(2)+'M \u00B7 Source: SAP Ageing Report';
+
+    // ── Finding text ──
+    var bk = data.buckets;
+    var overdueCustomers = items.filter(function(x){ return (+x.d91_120||0)+(+x['over120']||+x['over121']||0)>5000; });
+    var top3OD = overdueCustomers.slice(0,3).map(function(x){ return '<strong>'+x[nameKey]+'</strong>'; }).join(', ');
+    document.getElementById('aamod-finding-text').innerHTML = isAR
+      ? overdueCustomers.length+' customers have 91+ day overdue exposure. '+(top3OD?'Key accounts: '+top3OD+'.'
+          :'No significant overdue.')
+      : 'Total AP $'+(total/1e6).toFixed(2)+'M. '+overdueCustomers.length+' vendors have 90+ day overdue balances.'+(top3OD?' Key vendors: '+top3OD+'.':'');
+
+    // ── Footer ──
+    var footerItems = isAR
+      ? [{l:'Not Due',v:bk.not_due,c:'#1A6B3C'},{l:'0-30d',v:bk.d0_30,c:'#374151'},
+         {l:'31-60d',v:bk.d31_60||0,c:'#D97706'},{l:'61-90d',v:bk.d61_90||0,c:'#DC2626'},
+         {l:'91-120d',v:bk.d91_120,c:'#DC2626'}]
+      : [{l:'Future',v:bk.future||0,c:'#1A6B3C'},{l:'0-30d',v:bk.d0_30||0,c:'#374151'},
+         {l:'31-60d',v:bk.d31_60||0,c:'#D97706'},{l:'61-90d',v:bk.d61_90||0,c:'#DC2626'},
+         {l:'90-120d',v:bk.d90_120||0,c:'#DC2626'}];
+    document.getElementById('aamod-footer').innerHTML =
+      '<strong style="color:#1F2D5A">Ageing Summary:</strong>'+
+      footerItems.map(function(fi){
+        var pct2 = total>0?(fi.v/total*100).toFixed(1):'0.0';
+        return '<span style="color:'+fi.c+';font-weight:600">'+fi.l+': $'+
+               (fi.v/1e6).toFixed(2)+'M ('+pct2+'%)</span>';
+      }).join('<span style="color:#D1D5DB"> | </span>');
+
+    // ── Wire search / filter / sort ──
+    var searchEl = document.getElementById('aamod-search');
+    searchEl.value = '';
+    function doFilter(){
+      var q  = (searchEl.value||'').toLowerCase().trim();
+      var bu = buSel.value;
+      var filtered = items.filter(function(x){
+        if(bu && x.bu!==bu) return false;
+        if(q && (x[nameKey]||'').toLowerCase().indexOf(q)<0 &&
+                (x.bu||'').toLowerCase().indexOf(q)<0) return false;
+        return true;
+      });
+      buildRows(filtered);
+    }
+    searchEl.oninput = doFilter;
+    buSel.onchange   = doFilter;
+    var sortEl = document.getElementById('aamod-sortby');
+    if(sortEl){ sortEl.value='amount'; sortEl.onchange = doFilter; }
+
+    // ── Show modal ──
+    var bg = document.getElementById('aamod-bg');
+    bg.style.display = 'block';
+    bg.scrollTop = 0;
+  };
+
+  // ── Override all 12 AR/AP drill-down functions ───────────────────────
+  window.ddARTotal  = function(){ window.showAgingDD('ar',''); };
+  window.ddARNotDue = function(){ window.showAgingDD('ar','not_due'); };
+  window.ddAR030    = function(){ window.showAgingDD('ar','d0_30'); };
+  window.ddAR3160   = function(){ window.showAgingDD('ar','d31_60'); };
+  window.ddAR6190   = function(){ window.showAgingDD('ar','d61_90'); };
+  window.ddAR91120  = function(){ window.showAgingDD('ar','d91_120'); };
+  window.ddAPTotal  = function(){ window.showAgingDD('ap',''); };
+  window.ddAPFuture = function(){ window.showAgingDD('ap','future'); };
+  window.ddAP030    = function(){ window.showAgingDD('ap','d0_30'); };
+  window.ddAP3160   = function(){ window.showAgingDD('ap','d31_60'); };
+  window.ddAP6190   = function(){ window.showAgingDD('ap','d61_90'); };
+  window.ddAP90120  = function(){ window.showAgingDD('ap','d90_120'); };
+
+  console.log('[Section 25] Full AR/AP customer/vendor ageing modal (235 AR + 266 AP) applied.');
+})();
+// END Section 25
+
+// ================== SECTION 26 — DEDICATED AR & AP TABS ==================
+(function(){
+  'use strict';
+
+  // ── shared formatter ─────────────────────────────────────────────────
+  function fV(v){
+    var n=+v||0, neg=n<0, a=Math.abs(n), s;
+    if(a>=1e6)      s='$'+(a/1e6).toFixed(2)+'M';
+    else if(a>=1e3) s='$'+(a/1e3).toFixed(0)+'K';
+    else if(a>0)    s='$'+a.toFixed(0);
+    else return '\u2014';
+    return neg?'('+s+')':s;
+  }
+  function fC(v){ return (+v<0)?'color:#DC2626':''; }
+
+  function ageClr(v,w,d){
+    var n=+v||0;
+    if(n<=0) return '#9CA3AF';
+    if(n>=d) return '#DC2626';
+    if(n>=w) return '#D97706';
+    return '#374151';
+  }
+
+  // ── 1. Inject nav items ──────────────────────────────────────────────
+  (function(){
+    var nav = document.querySelector('.nav-section') || document.querySelector('nav') ||
+              document.getElementById('sidebar');
+    // Find the existing AR/AP ageing nav item and insert AR + AP items after it
+    var ageingItem = null;
+    document.querySelectorAll('.nav-item').forEach(function(el){
+      if(el.getAttribute('onclick') && el.getAttribute('onclick').indexOf("'ageing'")>=0){
+        ageingItem = el;
+      }
+    });
+
+    function makeNavItem(page, icon, label){
+      var d = document.createElement('div');
+      d.className = 'nav-item';
+      d.setAttribute('onclick', "showPage('"+page+"')");
+      d.innerHTML = '<span class="nav-icon">'+icon+'</span>'+label;
+      return d;
+    }
+
+    if(ageingItem && ageingItem.parentNode){
+      var p = ageingItem.parentNode;
+      var arNav = makeNavItem('ar-ageing', '\uD83D\uDCCA', 'AR Ageing Detail');
+      var apNav = makeNavItem('ap-ageing', '\uD83D\uDCCB', 'AP Ageing Detail');
+      p.insertBefore(apNav, ageingItem.nextSibling);
+      p.insertBefore(arNav, ageingItem.nextSibling);
+    }
+  })();
+
+  // ── 2. Inject page containers ────────────────────────────────────────
+  function addPage(id){
+    if(!document.getElementById('page-'+id)){
+      var d = document.createElement('div');
+      d.id = 'page-'+id;
+      d.className = 'page-section';
+      var cont = document.getElementById('page-overview');
+      if(cont && cont.parentNode) cont.parentNode.appendChild(d);
+    }
+  }
+  addPage('ar-ageing');
+  addPage('ap-ageing');
+
+  // ── 3. Extend pageTitles + initPage ──────────────────────────────────
+  if(typeof pageTitles === 'object'){
+    pageTitles['ar-ageing'] = 'AR Ageing — Customer Detail';
+    pageTitles['ap-ageing'] = 'AP Ageing — Vendor Detail';
+  }
+  var _prevInitPage = window.initPage;
+  window.initPage = function(name){
+    if(name==='ar-ageing'){ window.initARAgeing(); return; }
+    if(name==='ap-ageing'){ window.initAPAgeing(); return; }
+    if(_prevInitPage) _prevInitPage.apply(this, arguments);
+  };
+
+  // ─────────────────────────────────────────────────────────────────────
+  // 4. AR AGEING TAB
+  // ─────────────────────────────────────────────────────────────────────
+  window.initARAgeing = function(){
+    var pg = document.getElementById('page-ar-ageing');
+    if(!pg || pg.dataset.init) return;
+    pg.dataset.init = '1';
+
+    var ar   = AGEING_DATA.ar;
+    var bk   = ar.buckets;
+    var cust = (ar.customers||[]).slice().sort(function(a,b){ return b.amount-a.amount; });
+    var total= ar.total;
+
+    function pct(v){ return total>0 ? (v/total*100).toFixed(1)+'%':'0%'; }
+
+    // ── KPI banner ──
+    var kpis = [
+      {l:'Total AR',       v:total,        bg:'#1F2D5A',cl:'#fff', bucket:''},
+      {l:'Not Due',        v:bk.not_due,   bg:'#1A6B3C',cl:'#fff', bucket:'not_due'},
+      {l:'0\u201330 Days', v:bk.d0_30,     bg:'#2563EB',cl:'#fff', bucket:'d0_30'},
+      {l:'31\u201360 Days',v:bk.d31_60||0, bg:'#D97706',cl:'#fff', bucket:'d31_60'},
+      {l:'61\u201390 Days',v:bk.d61_90||0, bg:'#EA580C',cl:'#fff', bucket:'d61_90'},
+      {l:'91\u2013120 Days',v:bk.d91_120,  bg:'#DC2626',cl:'#fff', bucket:'d91_120'},
+    ];
+
+    var kpiHtml = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px;margin-bottom:24px">';
+    kpis.forEach(function(k){
+      kpiHtml += '<div onclick="window.showAgingDD(\'ar\',\''+k.bucket+'\')" '+
+        'style="background:'+k.bg+';color:'+k.cl+';padding:16px;border-radius:12px;cursor:pointer;'+
+        'box-shadow:0 2px 8px rgba(0,0,0,0.15);transition:transform 0.1s" '+
+        'onmouseover="this.style.transform=\'scale(1.03)\'" onmouseout="this.style.transform=\'scale(1)\'">' +
+        '<div style="font-size:11px;opacity:0.85;font-weight:600;text-transform:uppercase;letter-spacing:0.5px">'+k.l+'</div>'+
+        '<div style="font-size:22px;font-weight:800;margin:6px 0">'+fV(k.v)+'</div>'+
+        '<div style="font-size:11px;opacity:0.75">'+pct(k.v)+' of total</div>'+
+        '</div>';
+    });
+    kpiHtml += '</div>';
+
+    // ── Top 10 Spotlight ──
+    var top10 = cust.slice(0,10);
+    var spot = '<div style="background:#fff;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,0.09);'+
+      'overflow:hidden;margin-bottom:24px">'+
+      '<div style="background:#1F2D5A;color:#fff;padding:13px 20px;display:flex;align-items:center;gap:10px">'+
+      '<span style="font-size:20px">\uD83C\uDFC6</span>'+
+      '<span style="font-size:14px;font-weight:700">TOP 10 CUSTOMERS BY AR BALANCE — January 2026</span>'+
+      '<span style="margin-left:auto;font-size:11px;opacity:0.7">Spotlight: Largest Exposures</span>'+
+      '</div>'+
+      '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">'+
+      '<thead><tr style="background:#2C3E6B;color:#fff">'+
+      '<th style="padding:9px 12px;text-align:left;min-width:40px">#</th>'+
+      '<th style="padding:9px 12px;text-align:left;min-width:220px">Customer</th>'+
+      '<th style="padding:9px 12px;text-align:left;min-width:110px">Business Unit</th>'+
+      '<th style="padding:9px 12px;text-align:right;min-width:100px">Total AR</th>'+
+      '<th style="padding:9px 12px;text-align:right;min-width:90px">% of Total</th>'+
+      '<th style="padding:9px 12px;text-align:right;min-width:90px">Not Due</th>'+
+      '<th style="padding:9px 12px;text-align:right;min-width:82px">0\u201330d</th>'+
+      '<th style="padding:9px 12px;text-align:right;min-width:82px">31\u201360d</th>'+
+      '<th style="padding:9px 12px;text-align:right;min-width:82px">61\u201390d</th>'+
+      '<th style="padding:9px 12px;text-align:right;min-width:88px;background:#7B1D1D">91\u2013120d \u26A0</th>'+
+      '</tr></thead><tbody>';
+
+    top10.forEach(function(x, i){
+      var pctShare = total>0 ? (x.amount/total*100).toFixed(1)+'%' : '0%';
+      var od91 = +x.d91_120||0;
+      var bg = i%2===0 ? '#fff' : '#F9FAFB';
+      spot += '<tr style="background:'+bg+';border-bottom:1px solid #EAECF0">'+
+        '<td style="padding:8px 12px;font-size:13px;font-weight:700;color:#C9A84C">'+(i+1)+'</td>'+
+        '<td style="padding:8px 12px;font-weight:600;color:#111827">'+x.customer+'</td>'+
+        '<td style="padding:8px 12px"><span style="background:#E5E7EB;padding:2px 7px;border-radius:4px;font-size:10px">'+x.bu+'</span></td>'+
+        '<td style="padding:8px 12px;text-align:right;font-weight:700">'+fV(x.amount)+'</td>'+
+        '<td style="padding:8px 12px;text-align:right;color:#6B7280">'+pctShare+'</td>'+
+        '<td style="padding:8px 12px;text-align:right;color:#1A6B3C;font-weight:600">'+fV(x.not_due)+'</td>'+
+        '<td style="padding:8px 12px;text-align:right">'+fV(x.d0_30)+'</td>'+
+        '<td style="padding:8px 12px;text-align:right;color:'+ageClr(+x.d31_60||0,50000,200000)+'">'+fV(x.d31_60)+'</td>'+
+        '<td style="padding:8px 12px;text-align:right;color:'+ageClr(+x.d61_90||0,30000,100000)+'">'+fV(x.d61_90)+'</td>'+
+        '<td style="padding:8px 12px;text-align:right;font-weight:'+(od91>50000?700:400)+';'+
+        'color:'+ageClr(od91,20000,80000)+';background:'+(od91>80000?'#FEE2E2':od91>20000?'#FEF9C3':'')+'">'+fV(od91)+'</td>'+
+        '</tr>';
+    });
+    spot += '</tbody></table></div></div>';
+
+    // ── Full Customer Table with search ──
+    var fullHtml = '<div style="background:#fff;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,0.09);overflow:hidden">'+
+      '<div style="background:#1F2D5A;color:#fff;padding:13px 20px;display:flex;align-items:center;gap:10px">'+
+      '<span style="font-size:20px">\uD83D\uDCCA</span>'+
+      '<span style="font-size:14px;font-weight:700">ALL CUSTOMERS — AR Ageing Detail ('+ cust.length +' records)</span>'+
+      '</div>'+
+
+      // Search + filter toolbar
+      '<div style="padding:12px 20px;background:#F0F2F8;border-bottom:1px solid #E5E7EB;display:flex;gap:10px;flex-wrap:wrap;align-items:center">'+
+      '<input id="ar-search" type="text" placeholder="\uD83D\uDD0D Search customer\u2026" '+
+      'oninput="window.filterARTable()" '+
+      'style="flex:1;min-width:180px;padding:7px 12px;border:1px solid #D1D5DB;border-radius:7px;font-size:12px">'+
+      '<select id="ar-bufilter" onchange="window.filterARTable()" '+
+      'style="padding:7px 12px;border:1px solid #D1D5DB;border-radius:7px;font-size:12px">'+
+      '<option value="">All BUs</option>';
+
+    var buSet = {};
+    cust.forEach(function(x){ buSet[x.bu]=1; });
+    Object.keys(buSet).sort().forEach(function(b){
+      fullHtml += '<option value="'+b+'">'+b+'</option>';
+    });
+    fullHtml += '</select>'+
+      '<select id="ar-sortby" onchange="window.filterARTable()" style="padding:7px 12px;border:1px solid #D1D5DB;border-radius:7px;font-size:12px">'+
+      '<option value="amount">&#x25BC; Sort: Total AR (High\u2192Low)</option>'+
+      '<option value="name">&#x1F524; Sort: Name A\u2192Z</option>'+
+      '<option value="bu">&#x1F3E2; Sort: Business Unit</option>'+
+      '<option value="not_due">&#x2705; Sort: Not Due</option>'+
+      '<option value="d0_30">Sort: 0\u201330d</option>'+
+      '<option value="d31_60">Sort: 31\u201360d</option>'+
+      '<option value="d61_90">Sort: 61\u201390d</option>'+
+      '<option value="d91_120">&#x26A0; Sort: 91\u2013120d Overdue</option>'+
+      '<option value="over120">&#x1F534; Sort: \u003E120d Overdue</option>'+
+      '<option value="overdue_total">&#x1F6A8; Sort: Total Overdue (91d+)</option>'+
+      '</select>'+
+      '<span id="ar-count" style="font-size:11px;color:#6B7280;white-space:nowrap;font-weight:600">'+cust.length+' customers</span>'+
+      '</div>'+
+
+      // Table — clickable column headers for sort
+      '<div style="overflow-x:auto;max-height:600px;overflow-y:auto">'+
+      '<table style="width:100%;border-collapse:collapse;font-size:12px">'+
+      '<thead><tr id="ar-col-hdr" style="background:#2C3E6B;color:#fff;position:sticky;top:0;user-select:none">'+
+      '<th style="padding:8px 10px;min-width:36px">#</th>'+
+      '<th onclick="window.arSortBy(\'name\')" style="padding:8px 12px;text-align:left;min-width:230px;cursor:pointer" title="Sort by name">Customer <span id="ar-si-name"></span></th>'+
+      '<th onclick="window.arSortBy(\'bu\')" style="padding:8px 10px;text-align:left;min-width:110px;cursor:pointer" title="Sort by BU">BU <span id="ar-si-bu"></span></th>'+
+      '<th onclick="window.arSortBy(\'amount\')" style="padding:8px 10px;text-align:right;min-width:100px;cursor:pointer" title="Sort by Total AR">Total AR <span id="ar-si-amount"></span></th>'+
+      '<th onclick="window.arSortBy(\'not_due\')" style="padding:8px 10px;text-align:right;min-width:90px;background:#1A6B3C;cursor:pointer" title="Sort by Not Due">Not Due <span id="ar-si-not_due"></span></th>'+
+      '<th onclick="window.arSortBy(\'d0_30\')" style="padding:8px 10px;text-align:right;min-width:82px;cursor:pointer" title="Sort by 0-30d">0\u201330d <span id="ar-si-d0_30"></span></th>'+
+      '<th onclick="window.arSortBy(\'d31_60\')" style="padding:8px 10px;text-align:right;min-width:82px;cursor:pointer" title="Sort by 31-60d">31\u201360d <span id="ar-si-d31_60"></span></th>'+
+      '<th onclick="window.arSortBy(\'d61_90\')" style="padding:8px 10px;text-align:right;min-width:82px;cursor:pointer" title="Sort by 61-90d">61\u201390d <span id="ar-si-d61_90"></span></th>'+
+      '<th onclick="window.arSortBy(\'d91_120\')" style="padding:8px 10px;text-align:right;min-width:88px;background:#7B1D1D;cursor:pointer" title="Sort by 91-120d">91\u2013120d <span id="ar-si-d91_120"></span></th>'+
+      '<th onclick="window.arSortBy(\'over120\')" style="padding:8px 10px;text-align:right;min-width:82px;background:#581C1C;cursor:pointer" title="Sort by >120d">&gt;120d <span id="ar-si-over120"></span></th>'+
+      '</tr></thead>'+
+      '<tbody id="ar-full-tbody"></tbody>'+
+      '</table></div>'+
+      '</div>';
+
+    // Assemble page
+    pg.innerHTML =
+      '<div style="padding:20px">'+
+      '<div style="margin-bottom:20px">'+
+      '<h2 style="font-size:20px;font-weight:800;color:#1F2D5A;margin:0 0 4px">Accounts Receivable \u2014 Ageing Detail</h2>'+
+      '<p style="font-size:12px;color:#6B7280;margin:0">January 2026 · '+cust.length+' customers · Total: '+fV(total)+' · Click any KPI card to drill down</p>'+
+      '</div>'+
+      kpiHtml + spot + fullHtml +
+      '</div>';
+
+    // Store customers for filter function
+    window._arCustData = cust;
+    window.filterARTable();
+  };
+
+  // Click a column header to sort AR table
+  window.arSortBy = function(field){
+    var sel = document.getElementById('ar-sortby');
+    if(sel) sel.value = field;
+    window.filterARTable();
+  };
+
+  window.filterARTable = function(){
+    var data = window._arCustData || [];
+    var q    = ((document.getElementById('ar-search')||{}).value||'').toLowerCase().trim();
+    var bu   = ((document.getElementById('ar-bufilter')||{}).value||'');
+    var sort = ((document.getElementById('ar-sortby')||{}).value||'amount');
+
+    var filtered = data.filter(function(x){
+      if(bu && x.bu!==bu) return false;
+      if(q && (x.customer||'').toLowerCase().indexOf(q)<0 && (x.bu||'').toLowerCase().indexOf(q)<0) return false;
+      return true;
+    });
+
+    // Sort logic covering all columns
+    if(sort==='name')           filtered.sort(function(a,b){ return (a.customer||'').localeCompare(b.customer||''); });
+    else if(sort==='bu')        filtered.sort(function(a,b){ return (a.bu||'').localeCompare(b.bu||''); });
+    else if(sort==='not_due')   filtered.sort(function(a,b){ return (+b.not_due||0)-(+a.not_due||0); });
+    else if(sort==='d0_30')     filtered.sort(function(a,b){ return (+b.d0_30||0)-(+a.d0_30||0); });
+    else if(sort==='d31_60')    filtered.sort(function(a,b){ return (+b.d31_60||0)-(+a.d31_60||0); });
+    else if(sort==='d61_90')    filtered.sort(function(a,b){ return (+b.d61_90||0)-(+a.d61_90||0); });
+    else if(sort==='d91_120')   filtered.sort(function(a,b){ return (+b.d91_120||0)-(+a.d91_120||0); });
+    else if(sort==='over120')   filtered.sort(function(a,b){ return (+b.over120||0)-(+a.over120||0); });
+    else if(sort==='overdue_total') filtered.sort(function(a,b){
+      return ((+b.d91_120||0)+(+b.over120||0)) - ((+a.d91_120||0)+(+a.over120||0));
+    });
+    else filtered.sort(function(a,b){ return b.amount-a.amount; }); // default: amount
+
+    // Update sort indicator in column headers
+    var fields = ['name','bu','amount','not_due','d0_30','d31_60','d61_90','d91_120','over120'];
+    fields.forEach(function(f){
+      var el = document.getElementById('ar-si-'+f);
+      if(el) el.textContent = (sort===f) ? ' \u25BC' : '';
+    });
+
+    var html = '';
+    var ar = AGEING_DATA.ar;
+    filtered.forEach(function(x, i){
+      var bg = i%2===0 ? '#fff' : '#F9FAFB';
+      var od91 = +x.d91_120||0, od120 = +x.over120||0;
+      html += '<tr style="background:'+bg+';border-bottom:1px solid #F3F4F6">'+
+        '<td style="padding:5px 10px;color:#9CA3AF;font-size:10px">'+(i+1)+'</td>'+
+        '<td style="padding:5px 12px;font-weight:500;color:#111827">'+x.customer+'</td>'+
+        '<td style="padding:5px 10px"><span style="background:#E5E7EB;padding:2px 6px;border-radius:4px;font-size:10px">'+x.bu+'</span></td>'+
+        '<td style="padding:5px 10px;text-align:right;font-weight:600">'+fV(x.amount)+'</td>'+
+        '<td style="padding:5px 10px;text-align:right;color:#1A6B3C;font-weight:500">'+fV(x.not_due)+'</td>'+
+        '<td style="padding:5px 10px;text-align:right">'+fV(x.d0_30)+'</td>'+
+        '<td style="padding:5px 10px;text-align:right;color:'+ageClr(+x.d31_60||0,50000,200000)+'">'+fV(x.d31_60)+'</td>'+
+        '<td style="padding:5px 10px;text-align:right;color:'+ageClr(+x.d61_90||0,30000,100000)+'">'+fV(x.d61_90)+'</td>'+
+        '<td style="padding:5px 10px;text-align:right;font-weight:'+(od91>50000?700:400)+';'+
+        'color:'+ageClr(od91,20000,80000)+';background:'+(od91>80000?'#FEE2E2':od91>20000?'#FEF9C3':'')+'">'+fV(od91)+'</td>'+
+        '<td style="padding:5px 10px;text-align:right;color:'+ageClr(od120,10000,50000)+'">'+fV(od120)+'</td>'+
+        '</tr>';
+    });
+
+    // Totals
+    function sum(k){ return filtered.reduce(function(s,x){ return s+(+x[k]||0); },0); }
+    html += '<tr style="background:#1F2D5A;color:#fff;font-weight:700;border-top:3px solid #C9A84C">'+
+      '<td style="padding:7px 10px"></td>'+
+      '<td style="padding:7px 12px">GROUP TOTAL \u2014 '+filtered.length+' customers</td>'+
+      '<td></td>'+
+      '<td style="padding:7px 10px;text-align:right">'+fV(sum('amount'))+'</td>'+
+      '<td style="padding:7px 10px;text-align:right">'+fV(sum('not_due'))+'</td>'+
+      '<td style="padding:7px 10px;text-align:right">'+fV(sum('d0_30'))+'</td>'+
+      '<td style="padding:7px 10px;text-align:right">'+fV(sum('d31_60'))+'</td>'+
+      '<td style="padding:7px 10px;text-align:right">'+fV(sum('d61_90'))+'</td>'+
+      '<td style="padding:7px 10px;text-align:right">'+fV(sum('d91_120'))+'</td>'+
+      '<td style="padding:7px 10px;text-align:right">'+fV(sum('over120'))+'</td>'+
+      '</tr>';
+
+    var tbody = document.getElementById('ar-full-tbody');
+    if(tbody) tbody.innerHTML = html;
+    var cnt = document.getElementById('ar-count');
+    if(cnt) cnt.textContent = filtered.length+' / '+(window._arCustData||[]).length+' customers';
+  };
+
+  // ─────────────────────────────────────────────────────────────────────
+  // 5. AP AGEING TAB — Top 10 Vendor KPI Cards + Per-Entity One Report
+  // ─────────────────────────────────────────────────────────────────────
+  window.initAPAgeing = function(){
+    var pg = document.getElementById('page-ap-ageing');
+    if(!pg || pg.dataset.init) return;
+    pg.dataset.init = '1';
+
+    var ap   = AGEING_DATA.ap;
+    var bk   = ap.buckets;
+    var vend = (ap.vendors||[]).slice().sort(function(a,b){ return b.amount-a.amount; });
+    var total= ap.total;
+
+    function pct(v){ return total>0 ? (v/total*100).toFixed(1)+'%':'0%'; }
+
+    // ── SECTION 1: Ageing Summary KPI row (6 buckets) ──────────────────
+    var sumKpis = [
+      {l:'Total AP',         v:total,         bg:'#7B1D1D',cl:'#fff', bucket:''},
+      {l:'Future Remit',     v:bk.future||0,  bg:'#1A6B3C',cl:'#fff', bucket:'future'},
+      {l:'0\u201330 Days',   v:bk.d0_30||0,   bg:'#2563EB',cl:'#fff', bucket:'d0_30'},
+      {l:'31\u201360 Days',  v:bk.d31_60||0,  bg:'#D97706',cl:'#fff', bucket:'d31_60'},
+      {l:'61\u201390 Days',  v:bk.d61_90||0,  bg:'#EA580C',cl:'#fff', bucket:'d61_90'},
+      {l:'90\u2013120 Days', v:bk.d90_120||0, bg:'#DC2626',cl:'#fff', bucket:'d90_120'},
+    ];
+    var sumKpiHtml = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-bottom:24px">';
+    sumKpis.forEach(function(k){
+      sumKpiHtml +=
+        '<div onclick="window.showAgingDD(\'ap\',\''+k.bucket+'\')" '+
+        'style="background:'+k.bg+';color:'+k.cl+';padding:14px 16px;border-radius:10px;cursor:pointer;'+
+        'box-shadow:0 2px 8px rgba(0,0,0,0.15);transition:transform 0.1s" '+
+        'onmouseover="this.style.transform=\'scale(1.03)\'" onmouseout="this.style.transform=\'scale(1)\'">'+
+        '<div style="font-size:10px;opacity:0.85;font-weight:700;text-transform:uppercase;letter-spacing:0.6px">'+k.l+'</div>'+
+        '<div style="font-size:20px;font-weight:800;margin:5px 0">'+fV(k.v)+'</div>'+
+        '<div style="font-size:11px;opacity:0.75">'+pct(k.v)+' of total</div>'+
+        '</div>';
+    });
+    sumKpiHtml += '</div>';
+
+    // ── SECTION 2: Top 10 Vendor KPI Cards ─────────────────────────────
+    var top10 = vend.slice(0,10);
+    var t10Html =
+      '<div style="margin-bottom:24px">'+
+      '<div style="background:#1F2D5A;color:#fff;padding:12px 20px;border-radius:10px 10px 0 0;'+
+      'display:flex;align-items:center;gap:10px">'+
+      '<span style="font-size:18px">\uD83C\uDFC6</span>'+
+      '<span style="font-size:13px;font-weight:700;letter-spacing:0.2px">TOP 10 VENDORS BY AP BALANCE \u2014 January 2026</span>'+
+      '<span style="margin-left:auto;font-size:11px;opacity:0.7">Click any card to drill down</span>'+
+      '</div>'+
+      '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:0;'+
+      'background:#F0F2F8;padding:16px;border-radius:0 0 10px 10px;gap:12px">';
+
+    top10.forEach(function(x, i){
+      var od90 = +x.d90_120||0, od121 = +x.over121||0;
+      var worstOD = od90+od121;
+      var cardBorder = worstOD>100000 ? '3px solid #DC2626' : worstOD>30000 ? '3px solid #D97706' : '3px solid #E5E7EB';
+      var rankColor  = i<3 ? '#C9A84C' : '#9CA3AF';
+      var rankBg     = i<3 ? '#1F2D5A' : '#374151';
+      var odLabel    = worstOD>0 ? '<span style="color:#DC2626;font-weight:700;font-size:10px">⚠ OD: '+fV(worstOD)+'</span>' :
+                                   '<span style="color:#1A6B3C;font-size:10px">✓ No overdue</span>';
+      t10Html +=
+        '<div onclick="window.showAgingDD(\'ap\',\'\')" '+
+        'style="background:#fff;border-radius:10px;border:'+cardBorder+';padding:14px;cursor:pointer;'+
+        'box-shadow:0 2px 8px rgba(0,0,0,0.07);transition:transform 0.1s;display:flex;flex-direction:column;gap:8px" '+
+        'onmouseover="this.style.transform=\'scale(1.02)\'" onmouseout="this.style.transform=\'scale(1)\'">'+
+        // Rank + BU header
+        '<div style="display:flex;align-items:center;gap:8px">'+
+        '<span style="background:'+rankBg+';color:'+rankColor+';width:26px;height:26px;border-radius:50%;'+
+        'display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0">'+(i+1)+'</span>'+
+        '<span style="background:#E5E7EB;color:#374151;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:600;white-space:nowrap">'+x.bu+'</span>'+
+        odLabel+
+        '</div>'+
+        // Vendor name
+        '<div style="font-size:11px;font-weight:700;color:#111827;line-height:1.3;min-height:30px">'+x.vendor+'</div>'+
+        // Total AP
+        '<div style="border-top:1px solid #F3F4F6;padding-top:8px">'+
+        '<div style="font-size:10px;color:#6B7280;text-transform:uppercase;letter-spacing:0.4px">Total AP</div>'+
+        '<div style="font-size:18px;font-weight:800;color:#7B1D1D">'+fV(x.amount)+'</div>'+
+        '<div style="font-size:10px;color:#6B7280">'+pct(x.amount)+' of total AP</div>'+
+        '</div>'+
+        // Mini aging strip
+        '<div style="display:flex;gap:4px;flex-wrap:wrap">'+
+        (x.future>0?'<span style="background:#D1FAE5;color:#065F46;padding:2px 6px;border-radius:4px;font-size:10px">Fr: '+fV(x.future)+'</span>':'')+
+        (x.d0_30>0?'<span style="background:#DBEAFE;color:#1E40AF;padding:2px 6px;border-radius:4px;font-size:10px">0-30: '+fV(x.d0_30)+'</span>':'')+
+        (x.d31_60>0?'<span style="background:#FEF3C7;color:#92400E;padding:2px 6px;border-radius:4px;font-size:10px">31-60: '+fV(x.d31_60)+'</span>':'')+
+        (x.d61_90>0?'<span style="background:#FFEDD5;color:#9A3412;padding:2px 6px;border-radius:4px;font-size:10px">61-90: '+fV(x.d61_90)+'</span>':'')+
+        (od90>0?'<span style="background:#FEE2E2;color:#991B1B;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700">90-120: '+fV(od90)+'</span>':'')+
+        (od121>0?'<span style="background:#FEE2E2;color:#7F1D1D;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700">>121: '+fV(od121)+'</span>':'')+
+        '</div>'+
+        '</div>';
+    });
+    t10Html += '</div></div>';
+
+    // ── SECTION 3: Per-Entity Unified Report ────────────────────────────
+    // All vendors in ONE table, grouped by BU with BU-header rows + subtotals
+    var byBU = {};
+    vend.forEach(function(x){ var b=x.bu||'Other'; if(!byBU[b]) byBU[b]=[]; byBU[b].push(x); });
+    var buKeys = Object.keys(byBU).sort(function(a,b){
+      return byBU[b].reduce(function(s,x){return s+x.amount;},0) -
+             byBU[a].reduce(function(s,x){return s+x.amount;},0);
+    });
+
+    var colHdr =
+      '<thead><tr style="background:#2C3E6B;color:#fff;font-size:11px;position:sticky;top:0;z-index:2">'+
+      '<th style="padding:8px 10px;min-width:40px">#</th>'+
+      '<th style="padding:8px 14px;text-align:left;min-width:250px">Vendor Name</th>'+
+      '<th style="padding:8px 10px;text-align:right;min-width:105px">Total AP</th>'+
+      '<th style="padding:8px 10px;text-align:right;min-width:90px;background:#1A6B3C">Future</th>'+
+      '<th style="padding:8px 10px;text-align:right;min-width:80px">0\u201330d</th>'+
+      '<th style="padding:8px 10px;text-align:right;min-width:80px">31\u201360d</th>'+
+      '<th style="padding:8px 10px;text-align:right;min-width:80px">61\u201390d</th>'+
+      '<th style="padding:8px 10px;text-align:right;min-width:88px;background:#7B1D1D">90\u2013120d</th>'+
+      '<th style="padding:8px 10px;text-align:right;min-width:80px;background:#581C1C">&gt;121d</th>'+
+      '</tr></thead>';
+
+    var tBody = '<tbody id="ap-entity-tbody">';
+    var globalRow = 0;
+
+    buKeys.forEach(function(bu){
+      var vendors = byBU[bu];
+      function sumAP(k){ return vendors.reduce(function(s,x){return s+(+x[k]||0);},0); }
+      var buAmt = sumAP('amount');
+
+      // BU header row (spanning all columns)
+      tBody +=
+        '<tr style="background:#1F2D5A;color:#fff">'+
+        '<td colspan="9" style="padding:9px 14px;font-size:12px;font-weight:700;letter-spacing:0.3px">'+
+        '<span style="background:#C9A84C;color:#1F2D5A;padding:2px 10px;border-radius:4px;margin-right:10px">'+bu+'</span>'+
+        vendors.length+' vendor'+(vendors.length>1?'s':'')+
+        '<span style="float:right;font-size:12px">Total: '+fV(buAmt)+'</span>'+
+        '</td></tr>';
+
+      vendors.forEach(function(x, vi){
+        globalRow++;
+        var bg = vi%2===0 ? '#fff' : '#F7F8FA';
+        var od90 = +x.d90_120||0;
+        tBody +=
+          '<tr style="background:'+bg+';border-bottom:1px solid #F0F0F0">'+
+          '<td style="padding:5px 10px;color:#9CA3AF;font-size:10px;text-align:right">'+globalRow+'</td>'+
+          '<td style="padding:5px 14px;font-weight:500;color:#111827;font-size:12px">'+x.vendor+'</td>'+
+          '<td style="padding:5px 10px;text-align:right;font-weight:600;font-size:12px">'+fV(x.amount)+'</td>'+
+          '<td style="padding:5px 10px;text-align:right;color:#1A6B3C;font-weight:500">'+fV(x.future)+'</td>'+
+          '<td style="padding:5px 10px;text-align:right">'+fV(x.d0_30)+'</td>'+
+          '<td style="padding:5px 10px;text-align:right;color:'+ageClr(+x.d31_60||0,50000,200000)+'">'+fV(x.d31_60)+'</td>'+
+          '<td style="padding:5px 10px;text-align:right;color:'+ageClr(+x.d61_90||0,30000,100000)+'">'+fV(x.d61_90)+'</td>'+
+          '<td style="padding:5px 10px;text-align:right;font-weight:'+(od90>50000?700:400)+';'+
+          'color:'+ageClr(od90,20000,80000)+';background:'+(od90>80000?'#FEE2E2':od90>20000?'#FEF9C3':'')+'">'+fV(od90)+'</td>'+
+          '<td style="padding:5px 10px;text-align:right;color:'+ageClr(+x.over121||0,10000,50000)+'">'+fV(x.over121)+'</td>'+
+          '</tr>';
+      });
+
+      // BU subtotal
+      tBody +=
+        '<tr style="background:#2C3E6B;color:#fff;font-weight:700;font-size:11px">'+
+        '<td colspan="2" style="padding:6px 14px">\u2514 '+bu+' Subtotal ('+vendors.length+' vendors)</td>'+
+        '<td style="padding:6px 10px;text-align:right">'+fV(sumAP('amount'))+'</td>'+
+        '<td style="padding:6px 10px;text-align:right">'+fV(sumAP('future'))+'</td>'+
+        '<td style="padding:6px 10px;text-align:right">'+fV(sumAP('d0_30'))+'</td>'+
+        '<td style="padding:6px 10px;text-align:right">'+fV(sumAP('d31_60'))+'</td>'+
+        '<td style="padding:6px 10px;text-align:right">'+fV(sumAP('d61_90'))+'</td>'+
+        '<td style="padding:6px 10px;text-align:right">'+fV(sumAP('d90_120'))+'</td>'+
+        '<td style="padding:6px 10px;text-align:right">'+fV(sumAP('over121'))+'</td>'+
+        '</tr><tr style="height:6px;background:#F0F2F8"><td colspan="9"></td></tr>';
+    });
+
+    // Grand total
+    function grandSum(k){ return vend.reduce(function(s,x){return s+(+x[k]||0);},0); }
+    tBody +=
+      '<tr style="background:#C9A84C;color:#1F2D5A;font-weight:800;font-size:12px;border-top:3px solid #1F2D5A">'+
+      '<td colspan="2" style="padding:9px 14px">GROUP GRAND TOTAL \u2014 '+vend.length+' Vendors across '+buKeys.length+' Entities</td>'+
+      '<td style="padding:9px 10px;text-align:right">'+fV(grandSum('amount'))+'</td>'+
+      '<td style="padding:9px 10px;text-align:right">'+fV(grandSum('future'))+'</td>'+
+      '<td style="padding:9px 10px;text-align:right">'+fV(grandSum('d0_30'))+'</td>'+
+      '<td style="padding:9px 10px;text-align:right">'+fV(grandSum('d31_60'))+'</td>'+
+      '<td style="padding:9px 10px;text-align:right">'+fV(grandSum('d61_90'))+'</td>'+
+      '<td style="padding:9px 10px;text-align:right">'+fV(grandSum('d90_120'))+'</td>'+
+      '<td style="padding:9px 10px;text-align:right">'+fV(grandSum('over121'))+'</td>'+
+      '</tr>';
+    tBody += '</tbody>';
+
+    var entityReport =
+      '<div style="background:#fff;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,0.09);overflow:hidden">'+
+      '<div style="background:#7B1D1D;color:#fff;padding:13px 20px;display:flex;align-items:center;gap:10px">'+
+      '<span style="font-size:20px">\uD83C\uDFE2</span>'+
+      '<span style="font-size:14px;font-weight:700">AP AGEING — FULL REPORT BY ENTITY \u2014 January 2026</span>'+
+      '<span style="margin-left:auto;font-size:11px;opacity:0.7">'+vend.length+' vendors \u00B7 '+buKeys.length+' entities \u00B7 All figures USD</span>'+
+      '</div>'+
+      // Search + sort toolbar
+      '<div style="padding:12px 20px;background:#F0F2F8;border-bottom:1px solid #E5E7EB;display:flex;gap:10px;flex-wrap:wrap;align-items:center">'+
+      '<input id="ap-ent-search" type="text" placeholder="\uD83D\uDD0D Filter vendors\u2026" '+
+      'oninput="window.filterAPEntityReport()" '+
+      'style="flex:1;min-width:180px;padding:7px 12px;border:1px solid #D1D5DB;border-radius:7px;font-size:12px">'+
+      '<select id="ap-ent-bufilter" onchange="window.filterAPEntityReport()" '+
+      'style="padding:7px 12px;border:1px solid #D1D5DB;border-radius:7px;font-size:12px">'+
+      '<option value="">All Entities</option>';
+
+    buKeys.forEach(function(b){
+      entityReport += '<option value="'+b+'">'+b+'</option>';
+    });
+
+    entityReport +=
+      '</select>'+
+      '<select id="ap-ent-sortby" onchange="window.filterAPEntityReport()" '+
+      'style="padding:7px 12px;border:1px solid #D1D5DB;border-radius:7px;font-size:12px">'+
+      '<option value="amount">\u25BC Sort: Total AP (High\u2192Low)</option>'+
+      '<option value="name">\uD83D\uDD24 Sort: Name A\u2192Z</option>'+
+      '<option value="bu">\uD83C\uDFE2 Sort: Business Unit</option>'+
+      '<option value="future">\u2705 Sort: Future Remit</option>'+
+      '<option value="d0_30">Sort: 0\u201330d</option>'+
+      '<option value="d31_60">Sort: 31\u201360d</option>'+
+      '<option value="d61_90">Sort: 61\u201390d</option>'+
+      '<option value="d90_120">\u26A0 Sort: 90\u2013120d Overdue</option>'+
+      '<option value="over121">\uD83D\uDD34 Sort: \u003E121d Overdue</option>'+
+      '<option value="overdue_total">\uD83D\uDEA8 Sort: Total Overdue (90d+)</option>'+
+      '</select>'+
+      '<span id="ap-ent-count" style="font-size:11px;color:#6B7280;font-weight:600">'+vend.length+' vendors</span>'+
+      '</div>'+
+      // Clickable column headers
+      '<div style="overflow-x:auto;max-height:700px;overflow-y:auto">'+
+      '<table style="width:100%;border-collapse:collapse;font-size:12px">'+
+      '<thead><tr id="ap-col-hdr" style="background:#2C3E6B;color:#fff;font-size:11px;position:sticky;top:0;z-index:2;user-select:none">'+
+      '<th style="padding:8px 10px;min-width:40px">#</th>'+
+      '<th onclick="window.apSortBy(\'name\')" style="padding:8px 14px;text-align:left;min-width:250px;cursor:pointer" title="Sort by name">Vendor Name <span id="ap-si-name"></span></th>'+
+      '<th onclick="window.apSortBy(\'amount\')" style="padding:8px 10px;text-align:right;min-width:105px;cursor:pointer" title="Sort by Total AP">Total AP <span id="ap-si-amount"></span></th>'+
+      '<th onclick="window.apSortBy(\'future\')" style="padding:8px 10px;text-align:right;min-width:90px;background:#1A6B3C;cursor:pointer" title="Sort by Future">Future <span id="ap-si-future"></span></th>'+
+      '<th onclick="window.apSortBy(\'d0_30\')" style="padding:8px 10px;text-align:right;min-width:80px;cursor:pointer" title="Sort by 0-30d">0\u201330d <span id="ap-si-d0_30"></span></th>'+
+      '<th onclick="window.apSortBy(\'d31_60\')" style="padding:8px 10px;text-align:right;min-width:80px;cursor:pointer" title="Sort by 31-60d">31\u201360d <span id="ap-si-d31_60"></span></th>'+
+      '<th onclick="window.apSortBy(\'d61_90\')" style="padding:8px 10px;text-align:right;min-width:80px;cursor:pointer" title="Sort by 61-90d">61\u201390d <span id="ap-si-d61_90"></span></th>'+
+      '<th onclick="window.apSortBy(\'d90_120\')" style="padding:8px 10px;text-align:right;min-width:88px;background:#7B1D1D;cursor:pointer" title="Sort by 90-120d">90\u2013120d <span id="ap-si-d90_120"></span></th>'+
+      '<th onclick="window.apSortBy(\'over121\')" style="padding:8px 10px;text-align:right;min-width:80px;background:#581C1C;cursor:pointer" title="Sort by >121d">&gt;121d <span id="ap-si-over121"></span></th>'+
+      '</tr></thead>'+
+      tBody +
+      '</table></div></div>';
+
+    // Assemble full page
+    pg.innerHTML =
+      '<div style="padding:20px">'+
+      '<div style="margin-bottom:20px;display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px">'+
+      '<div>'+
+      '<h2 style="font-size:20px;font-weight:800;color:#7B1D1D;margin:0 0 4px">Accounts Payable \u2014 Ageing Detail</h2>'+
+      '<p style="font-size:12px;color:#6B7280;margin:0">January 2026 \u00B7 '+vend.length+' vendors \u00B7 '+buKeys.length+' entities \u00B7 Total AP: '+fV(total)+'</p>'+
+      '</div>'+
+      '</div>'+
+      sumKpiHtml + t10Html + entityReport +
+      '</div>';
+
+    window._apVendData = vend;
+    window._apBUKeys   = buKeys;
+    window._apByBU     = byBU;
+  };
+
+  // Click column header to sort AP table
+  window.apSortBy = function(field){
+    var sel = document.getElementById('ap-ent-sortby');
+    if(sel) sel.value = field;
+    window.filterAPEntityReport();
+  };
+
+  window.filterAPEntityReport = function(){
+    var q    = ((document.getElementById('ap-ent-search')||{}).value||'').toLowerCase().trim();
+    var bu   = ((document.getElementById('ap-ent-bufilter')||{}).value||'');
+    var sort = ((document.getElementById('ap-ent-sortby')||{}).value||'amount');
+    var allVend = window._apVendData || [];
+    var buKeys  = window._apBUKeys  || [];
+    var byBU    = window._apByBU    || {};
+
+    // Update sort indicators
+    ['name','amount','future','d0_30','d31_60','d61_90','d90_120','over121'].forEach(function(f){
+      var el = document.getElementById('ap-si-'+f);
+      if(el) el.textContent = (sort===f) ? ' \u25BC' : '';
+    });
+
+    var html = '';
+    var visCount = 0;
+    var globalRow = 0;
+
+    buKeys.forEach(function(b){
+      if(bu && b!==bu) return;
+      var vendors = (byBU[b]||[]).filter(function(x){
+        if(!q) return true;
+        return (x.vendor||'').toLowerCase().indexOf(q)>=0;
+      });
+      if(!vendors.length) return;
+
+      // Sort vendors within each BU section
+      if(sort==='name')       vendors = vendors.slice().sort(function(a,b){ return (a.vendor||'').localeCompare(b.vendor||''); });
+      else if(sort==='amount')   vendors = vendors.slice().sort(function(a,b){ return b.amount-a.amount; });
+      else if(sort==='future')   vendors = vendors.slice().sort(function(a,b){ return (+b.future||0)-(+a.future||0); });
+      else if(sort==='d0_30')    vendors = vendors.slice().sort(function(a,b){ return (+b.d0_30||0)-(+a.d0_30||0); });
+      else if(sort==='d31_60')   vendors = vendors.slice().sort(function(a,b){ return (+b.d31_60||0)-(+a.d31_60||0); });
+      else if(sort==='d61_90')   vendors = vendors.slice().sort(function(a,b){ return (+b.d61_90||0)-(+a.d61_90||0); });
+      else if(sort==='d90_120')  vendors = vendors.slice().sort(function(a,b){ return (+b.d90_120||0)-(+a.d90_120||0); });
+      else if(sort==='over121')  vendors = vendors.slice().sort(function(a,b){ return (+b.over121||0)-(+a.over121||0); });
+      else if(sort==='overdue_total') vendors = vendors.slice().sort(function(a,b){
+        return ((+b.d90_120||0)+(+b.over121||0)) - ((+a.d90_120||0)+(+a.over121||0));
+      });
+
+      function sumAP(k){ return vendors.reduce(function(s,x){return s+(+x[k]||0);},0); }
+      var buAmt = sumAP('amount');
+
+      html +=
+        '<tr style="background:#1F2D5A;color:#fff">'+
+        '<td colspan="9" style="padding:9px 14px;font-size:12px;font-weight:700">'+
+        '<span style="background:#C9A84C;color:#1F2D5A;padding:2px 10px;border-radius:4px;margin-right:10px">'+b+'</span>'+
+        vendors.length+' vendor'+(vendors.length>1?'s':'')+
+        '<span style="float:right">Total: '+fV(buAmt)+'</span>'+
+        '</td></tr>';
+
+      vendors.forEach(function(x, vi){
+        globalRow++; visCount++;
+        var bg = vi%2===0?'#fff':'#F7F8FA';
+        var od90 = +x.d90_120||0;
+        html +=
+          '<tr style="background:'+bg+';border-bottom:1px solid #F0F0F0">'+
+          '<td style="padding:5px 10px;color:#9CA3AF;font-size:10px;text-align:right">'+globalRow+'</td>'+
+          '<td style="padding:5px 14px;font-weight:500;color:#111827">'+x.vendor+'</td>'+
+          '<td style="padding:5px 10px;text-align:right;font-weight:600">'+fV(x.amount)+'</td>'+
+          '<td style="padding:5px 10px;text-align:right;color:#1A6B3C">'+fV(x.future)+'</td>'+
+          '<td style="padding:5px 10px;text-align:right">'+fV(x.d0_30)+'</td>'+
+          '<td style="padding:5px 10px;text-align:right;color:'+ageClr(+x.d31_60||0,50000,200000)+'">'+fV(x.d31_60)+'</td>'+
+          '<td style="padding:5px 10px;text-align:right;color:'+ageClr(+x.d61_90||0,30000,100000)+'">'+fV(x.d61_90)+'</td>'+
+          '<td style="padding:5px 10px;text-align:right;font-weight:'+(od90>50000?700:400)+';'+
+          'color:'+ageClr(od90,20000,80000)+';background:'+(od90>80000?'#FEE2E2':od90>20000?'#FEF9C3':'')+'">'+fV(od90)+'</td>'+
+          '<td style="padding:5px 10px;text-align:right;color:'+ageClr(+x.over121||0,10000,50000)+'">'+fV(x.over121)+'</td>'+
+          '</tr>';
+      });
+
+      html +=
+        '<tr style="background:#2C3E6B;color:#fff;font-weight:700;font-size:11px">'+
+        '<td colspan="2" style="padding:6px 14px">\u2514 '+b+' Subtotal</td>'+
+        '<td style="padding:6px 10px;text-align:right">'+fV(sumAP('amount'))+'</td>'+
+        '<td style="padding:6px 10px;text-align:right">'+fV(sumAP('future'))+'</td>'+
+        '<td style="padding:6px 10px;text-align:right">'+fV(sumAP('d0_30'))+'</td>'+
+        '<td style="padding:6px 10px;text-align:right">'+fV(sumAP('d31_60'))+'</td>'+
+        '<td style="padding:6px 10px;text-align:right">'+fV(sumAP('d61_90'))+'</td>'+
+        '<td style="padding:6px 10px;text-align:right">'+fV(sumAP('d90_120'))+'</td>'+
+        '<td style="padding:6px 10px;text-align:right">'+fV(sumAP('over121'))+'</td>'+
+        '</tr><tr style="height:6px;background:#F0F2F8"><td colspan="9"></td></tr>';
+    });
+
+    var tbody = document.getElementById('ap-entity-tbody');
+    if(tbody) tbody.innerHTML = html;
+    var cnt = document.getElementById('ap-ent-count');
+    if(cnt) cnt.textContent = visCount+' / '+(window._apVendData||[]).length+' vendors';
+  };
+
+  // Keep filterAPTable as no-op (flat view removed, entity report replaces it)
+  window.filterAPTable = function(){};
+
+  // ── Hide "Full Data Table" nav item ────────────────────────────────
+  document.querySelectorAll('.nav-item').forEach(function(el){
+    if(el.getAttribute('onclick') && el.getAttribute('onclick').indexOf("'table'") >= 0){
+      el.style.display = 'none';
+    }
+  });
+
+  console.log('[Section 26] AR/AP tabs + sort + Full Data Table hidden.');
+})();
+// END Section 26
 </script>
 </body>
 </html>
