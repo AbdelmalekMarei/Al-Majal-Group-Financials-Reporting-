@@ -9,7 +9,8 @@
 :root{--navy:#0a2342;--navy2:#0d2e56;--gold:#c9a84c;--gold2:#f0d080;--acc:#1a6fa8;--teal:#1a8a94;--green:#27ae60;--red:#c0392b;--purple:#6b3fa0;--bg:#eef1f6;--card:#fff;--border:#dde3ed;--muted:#5a6878;--shadow:0 2px 12px rgba(10,35,66,.10);--sw:240px;}
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--navy);font-size:13px;display:flex;min-height:100vh;}
-.sidebar{width:var(--sw);min-width:var(--sw);height:100vh;position:fixed;top:0;left:0;background:var(--navy);display:flex;flex-direction:column;overflow-y:auto;z-index:100;}
+.sidebar{width:var(--sw);min-width:var(--sw);height:100vh;position:fixed;top:0;left:0;background:var(--navy);display:flex;flex-direction:column;overflow-y:auto;z-index:100;transition:width .22s cubic-bezier(.4,0,.2,1),min-width .22s cubic-bezier(.4,0,.2,1);}
+.sidebar.collapsed{width:0;min-width:0;overflow:hidden;}
 .sb-logo{padding:16px 12px 14px;border-bottom:1px solid rgba(255,255,255,.12);display:flex;flex-direction:column;align-items:center;gap:6px;}
 .logo-oval{width:86px;height:43px;border-radius:50%;border:2.5px solid var(--gold);background:linear-gradient(145deg,#0d2e56,#1a4a7a);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;letter-spacing:2px;color:var(--gold);text-transform:uppercase;}
 .logo-txt{color:#fff;font-size:12px;font-weight:700;letter-spacing:1px;text-align:center;}
@@ -19,8 +20,13 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--na
 .ni .ic{font-size:13px;width:18px;text-align:center;}
 .ni:hover{background:rgba(255,255,255,.07);color:#fff;}
 .ni.active{background:rgba(201,168,76,.13);color:var(--gold);border-left-color:var(--gold);font-weight:700;}
-.main{margin-left:var(--sw);flex:1;display:flex;flex-direction:column;}
+.main{margin-left:var(--sw);flex:1;display:flex;flex-direction:column;transition:margin-left .22s cubic-bezier(.4,0,.2,1);}
+.main.sb-hidden{margin-left:0;}
 .topbar{background:var(--navy);color:#fff;padding:11px 26px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 8px rgba(0,0,0,.25);position:sticky;top:0;z-index:50;}
+.sb-toggle{background:none;border:none;cursor:pointer;color:#fff;font-size:18px;padding:4px 8px;border-radius:6px;display:flex;align-items:center;margin-right:8px;opacity:.85;transition:background .15s,opacity .15s;}
+.sb-toggle:hover{background:rgba(255,255,255,.15);opacity:1;}
+.sb-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:99;}
+.sb-overlay.active{display:block;}
 .tb-title{font-size:15px;font-weight:700;}
 .tb-badge{background:var(--gold);color:var(--navy);font-size:10px;font-weight:700;padding:2px 10px;border-radius:12px;margin-left:8px;}
 .tb-date{color:var(--gold2);font-size:11px;}
@@ -191,9 +197,11 @@ th.ytd{background:#f0d060!important;color:var(--navy)!important;}
   <div class="ni" onclick="show('po',this)"><span class="ic">📋</span>Open Purchase Orders</div>
 </aside>
 
-<div class="main">
+<div class="sb-overlay" id="sbOverlay" onclick="toggleSidebar()"></div>
+<div class="main" id="mainContent">
 <div class="topbar">
-  <div style="display:flex;align-items:center;gap:8px">
+  <div style="display:flex;align-items:center;gap:4px">
+    <button class="sb-toggle" id="sbToggle" onclick="toggleSidebar()" title="Toggle menu">☰</button>
     <span class="tb-title">AMBP Framework</span>
     <span class="tb-badge">Abu Majal Business Park</span>
   </div>
@@ -1020,8 +1028,37 @@ function show(id, el) {
   document.querySelectorAll('.ni').forEach(n=>n.classList.remove('active'));
   document.getElementById('page-'+id).classList.add('active');
   el.classList.add('active');
-  // Force chart resize so canvases that were hidden at init render correctly
-  setTimeout(() => Object.values(charts).forEach(c => { try { c.resize(); } catch(e){} }), 30);
+  // Auto-collapse sidebar after selection
+  collapseSidebar();
+  // Force chart resize after sidebar transition completes
+  setTimeout(() => Object.values(charts).forEach(c => { try { c.resize(); } catch(e){} }), 260);
+}
+
+function collapseSidebar() {
+  document.querySelector('.sidebar').classList.add('collapsed');
+  document.getElementById('mainContent').classList.add('sb-hidden');
+  document.getElementById('sbOverlay').classList.remove('active');
+  document.getElementById('sbToggle').innerHTML = '☰';
+}
+
+function toggleSidebar() {
+  const sb = document.querySelector('.sidebar');
+  const main = document.getElementById('mainContent');
+  const overlay = document.getElementById('sbOverlay');
+  const btn = document.getElementById('sbToggle');
+  const isOpen = !sb.classList.contains('collapsed');
+  if (isOpen) {
+    sb.classList.add('collapsed');
+    main.classList.add('sb-hidden');
+    overlay.classList.remove('active');
+    btn.innerHTML = '☰';
+  } else {
+    sb.classList.remove('collapsed');
+    main.classList.remove('sb-hidden');
+    overlay.classList.add('active');
+    btn.innerHTML = '✕';
+    setTimeout(() => Object.values(charts).forEach(c => { try { c.resize(); } catch(e){} }), 260);
+  }
 }
 
 const charts={};
