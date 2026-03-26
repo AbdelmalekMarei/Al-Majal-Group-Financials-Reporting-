@@ -32114,6 +32114,615 @@ function _bf$(v){
 }
 
 })();
+
+/* ═══════ AP AGEING KPI DRILLDOWNS — FIXED API ═══════ */
+(function(){
+'use strict';
+
+function fV(v){
+  if(v==null||v===0) return '$0';
+  var a=Math.abs(v); var s;
+  if(a>=1e6) s='$'+(a/1e6).toFixed(2)+'M';
+  else if(a>=1e3) s='$'+(a/1e3).toFixed(1)+'K';
+  else s='$'+Math.round(a).toLocaleString();
+  return v<0?'('+s+')':s;
+}
+
+/* ── Helper: bucket label ── */
+function _bucketLabel(b){
+  var map = {
+    '':'All Vendors','future':'Not Yet Due','d0_30':'0–30 Days',
+    'd31_60':'31–60 Days','d61_90':'61–90 Days','d91_120':'91–120 Days'
+  };
+  return map[b]||b;
+}
+
+/* ── BUCKET DRILLDOWN (replaces window.showAPBucketDD) ── */
+window.showAPBucketDD = function(bucket){
+  var apData = AGEING_DATA.ap;
+  var allVendors = (apData.vendors||[]).slice();
+  var grandTotal = apData.total || allVendors.reduce(function(s,x){return s+(x.amount||0);},0);
+
+  /* Filter vendors that have a non-zero amount in the selected bucket */
+  var filtered;
+  if(!bucket || bucket===''){
+    /* Total AP — show all vendors */
+    filtered = allVendors.sort(function(a,b){return (b.amount||0)-(a.amount||0);});
+  } else {
+    filtered = allVendors.filter(function(x){
+      return +(x[bucket]||0) > 0;
+    }).sort(function(a,b){
+      return +(b[bucket]||0) - +(a[bucket]||0);
+    });
+  }
+
+  var bucketTotal = 0;
+  filtered.forEach(function(x){
+    bucketTotal += bucket ? +(x[bucket]||0) : (x.amount||0);
+  });
+
+  /* Build rows — show ALL vendors, not just top 20 */
+  var rows = [];
+  filtered.forEach(function(x, i){
+    var amt = bucket ? +(x[bucket]||0) : (x.amount||0);
+    var pctBucket = bucketTotal>0 ? (amt/bucketTotal*100).toFixed(1)+'%' : '0%';
+    var pctTotal  = grandTotal>0 ? (amt/grandTotal*100).toFixed(1)+'%' : '0%';
+    var future = x.future||x.not_due||0;
+    rows.push({cells:[
+      {v: (i+1)+'. '+(x.vendor||x.name||'\u2014')},
+      {v: x.bu||'\u2014'},
+      {v: fV(amt)},
+      {v: pctBucket},
+      {v: pctTotal},
+      {v: fV(future)},
+      {v: fV(x.d0_30||0)},
+      {v: fV(x.d31_60||0)},
+      {v: fV(x.d61_90||0)},
+      {v: fV(x.d91_120||x.d90_120||0), color: +(x.d91_120||x.d90_120||0)>50000?'#DC2626':''}
+    ]});
+  });
+
+  /* Total row */
+  rows.push({_total:true, cells:[
+    {v:'TOTAL ('+filtered.length+' vendors)'},
+    {v:''},
+    {v: fV(bucketTotal)},
+    {v:'100%'},
+    {v: grandTotal>0?(bucketTotal/grandTotal*100).toFixed(1)+'%':''},
+    {v:''},{v:''},{v:''},{v:''},{v:''}
+  ]});
+
+  /* BU summary */
+  var byBU = {};
+  filtered.forEach(function(x){
+    var bu = x.bu||'\u2014';
+    if(!byBU[bu]) byBU[bu] = {count:0, amt:0};
+    byBU[bu].count++;
+    byBU[bu].amt += bucket ? +(x[bucket]||0) : (x.amount||0);
+  });
+  var buKeys = Object.keys(byBU).sort(function(a,b){return byBU[b].amt-byBU[a].amt;});
+  var buSummary = buKeys.map(function(bu){
+    return bu+': '+fV(byBU[bu].amt)+' ('+byBU[bu].count+' vendors)';
+  }).join(' | ');
+
+  var finding = '<strong>'+_bucketLabel(bucket)+'</strong>: '+fV(bucketTotal)+
+    ' across '+filtered.length+' vendors ('+
+    (grandTotal>0?(bucketTotal/grandTotal*100).toFixed(1):'0')+'% of total AP).<br>'+
+    '<strong>By BU:</strong> '+buSummary;
+
+  var cols = [
+    {label:'Vendor'}, {label:'BU'},
+    {label:_bucketLabel(bucket),num:true}, {label:'% Bucket',num:true},
+    {label:'% Total AP',num:true},
+    {label:'Not Due',num:true}, {label:'0\u201330d',num:true},
+    {label:'31\u201360d',num:true}, {label:'61\u201390d',num:true},
+    {label:'91\u2013120d',num:true}
+  ];
+
+  if(typeof showDrillDown==='function'){
+    showDrillDown('\uD83D\uDCCB',
+      'AP Ageing \u2014 '+_bucketLabel(bucket)+' ('+filtered.length+' vendors)',
+      finding, 'SAP ERP \u2014 AP Ageing Report', rows, cols);
+  }
+};
+
+/* ── VENDOR DRILLDOWN (replaces window.showAPVendorDD) ── */
+window.showAPVendorDD = function(vname){
+  var vdec = decodeURIComponent(vname);
+  var apData = AGEING_DATA.ap;
+  var x = (apData.vendors||[]).find(function(v){
+    return (v.vendor||v.name||'')===vdec;
+  });
+
+  if(!x){
+    if(typeof showDrillDown==='function')
+      showDrillDown('\uD83D\uDCCB', vdec,
+        'Vendor not found in AP data.', null, [], []);
+    return;
+  }
+
+  var future = x.future||x.not_due||0;
+  var d030   = x.d0_30||0;
+  var d3160  = x.d31_60||0;
+  var d6190  = x.d61_90||0;
+  var d91120 = x.d91_120||x.d90_120||0;
+  var amt    = x.amount||0;
+  var grandTotal = apData.total || (apData.vendors||[]).reduce(function(s,v){return s+(v.amount||0);},0);
+
+  var pctOf = function(v){ return amt>0?(v/amt*100).toFixed(1)+'%':'0%'; };
+
+  /* Ageing breakdown rows */
+  var rows = [
+    {cells:[{v:'Not Yet Due'},{v:fV(future)},{v:pctOf(future)},{v:future>0?'\u2705 Current':''}]},
+    {cells:[{v:'0\u201330 Days'},{v:fV(d030)},{v:pctOf(d030)},{v:d030>0?'\u26A0\uFE0F Recent':''}]},
+    {cells:[{v:'31\u201360 Days'},{v:fV(d3160)},{v:pctOf(d3160)},{v:d3160>50000?'\u26A0\uFE0F Watch':'',color:d3160>50000?'#D97706':''}]},
+    {cells:[{v:'61\u201390 Days'},{v:fV(d6190)},{v:pctOf(d6190)},{v:d6190>30000?'\u2757 Aging':'',color:d6190>30000?'#EA580C':''}]},
+    {cells:[{v:'91\u2013120 Days'},{v:fV(d91120)},{v:pctOf(d91120)},{v:d91120>20000?'\uD83D\uDED1 Critical':'',color:d91120>20000?'#DC2626':''}]},
+    {_total:true, cells:[{v:'TOTAL PAYABLE'},{v:fV(amt)},{v:'100%'},{v:''}]}
+  ];
+
+  /* Rank among all vendors */
+  var sorted = (apData.vendors||[]).slice().sort(function(a,b){return (b.amount||0)-(a.amount||0);});
+  var rank = 1;
+  for(var i=0;i<sorted.length;i++){
+    if((sorted[i].vendor||sorted[i].name||'')===vdec){ rank=i+1; break; }
+  }
+
+  /* Overdue analysis */
+  var overdue = d3160 + d6190 + d91120;
+  var overdueStr = overdue>0
+    ? fV(overdue)+' ('+pctOf(overdue)+') is overdue (>30 days)'
+    : 'No overdue amounts';
+
+  var finding = '<strong>'+vdec+'</strong> \u2014 BU: '+(x.bu||'\u2014')+
+    ' | Rank: #'+rank+' of '+sorted.length+' vendors'+
+    ' | '+pctOf(amt).replace('%','')+'% of total AP ('+fV(grandTotal)+')'+
+    '<br><strong>Overdue:</strong> '+overdueStr;
+
+  var cols = [
+    {label:'Ageing Bucket'}, {label:'Amount',num:true},
+    {label:'% of Vendor AP',num:true}, {label:'Status'}
+  ];
+
+  if(typeof showDrillDown==='function'){
+    showDrillDown('\uD83D\uDCCB', vdec+' \u2014 AP Ageing Detail',
+      finding, 'SAP ERP \u2014 AP Ageing Report', rows, cols);
+  }
+};
+
+})();
+
+/* ═══════ REVENUE V3 — Avg Monthly + Period Filters + BU Drilldowns ═══════ */
+(function(){
+'use strict';
+
+/* ── palette (re-declare for this IIFE) ── */
+var N='#1F2D5A',G='#C9A84C',GR='#1A6B3C',RD='#CC3300',BL='#2563EB',PU='#7C3AED',TE='#0891B2',OR='#D97706';
+function $v(n){if(n===null||n===undefined||isNaN(n))return'\u2014';var a=Math.abs(n),s=n<0?'(':'',e=n<0?')':'';if(a>=1e9)return s+'$'+(a/1e9).toFixed(2)+'B'+e;if(a>=1e6)return s+'$'+(a/1e6).toFixed(1)+'M'+e;if(a>=1e3)return s+'$'+(a/1e3).toFixed(0)+'K'+e;return s+'$'+a.toFixed(0)+e;}
+function $f(n){if(n===null||n===undefined||isNaN(n))return'\u2014';return(n<0?'(':'')+('$'+Math.abs(n).toLocaleString('en-US',{maximumFractionDigits:0}))+(n<0?')':'');}
+function chgB(v){if(v===null||v===undefined)return'';return'<span style="font-size:11px;font-weight:700;color:'+(v>=0?GR:RD)+'">'+(v>=0?'\u25B2':'\u25BC')+Math.abs(v).toFixed(1)+'%</span>';}
+
+function _fp(){return(typeof FP_DATA!=='undefined')?FP_DATA:{};}
+function _D(){return(typeof D!=='undefined')?D:{};}
+
+/* ═══════ 1. AVG MONTHLY COMPARISON ROW ═══════ */
+/* Wrap previous initRevenue to inject the avg monthly row + period filters */
+var _prevRev = window.initRevenue;
+window.initRevenue = function(){
+  /* Let V2 render first */
+  if(_prevRev) _prevRev.apply(this, arguments);
+
+  var pg = document.getElementById('page-revenue');
+  if(!pg || pg.dataset.rv3) return;
+  pg.dataset.rv3 = '1';
+
+  var kpis = _fp().group_kpis || {};
+  var ga   = _D().group_annual || {};
+  var mo25 = (_D().mo_2025||{}).Revenue || [];
+  var rev25 = kpis.rev_2025 || 195318802;
+  var rev26 = kpis.rev_jan26 || 15781117;
+
+  /* Avg monthly calculations */
+  var avg25 = rev25 / 12;
+  var ytd26Months = 1; /* Jan 2026 only — update when more months arrive */
+  var avg26 = rev26 / ytd26Months;
+  var avgDelta = avg25 > 0 ? ((avg26 - avg25) / avg25 * 100) : null;
+
+  /* Historical yearly avgs */
+  var gaYrs = ga.Year || [];
+  var gaRevs = ga.Revenue || [];
+  var yearAvgs = {};
+  gaYrs.forEach(function(yr, i){
+    yearAvgs[yr] = (gaRevs[i]||0) / 12;
+  });
+
+  /* ── Build the Avg Monthly comparison banner ── */
+  var avgHtml = '<div id="rv3-avg-row" style="background:linear-gradient(135deg,#0F172A,#1E3A5F);border-radius:14px;padding:20px 22px;margin-bottom:16px;color:#fff">'
+    + '<div style="font-size:11px;font-weight:700;color:'+G+';text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">\u2014 Average Monthly Revenue Comparison \u2014</div>'
+    + '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px">';
+
+  /* 2025 Avg Monthly */
+  avgHtml += _avgCard('Avg Monthly 2025', avg25, 'FY2025 / 12 months', '#3B82F6');
+  /* 2026 Avg Monthly */
+  avgHtml += _avgCard('Avg Monthly 2026', avg26, 'YTD Jan 2026 / '+ytd26Months+' month'+(ytd26Months>1?'s':''), TE);
+  /* Delta */
+  var deltaClr = avgDelta !== null && avgDelta >= 0 ? GR : RD;
+  avgHtml += '<div style="background:rgba(255,255,255,.08);border-radius:12px;padding:14px 16px;border:1px solid rgba(255,255,255,.12)">'
+    + '<div style="font-size:10px;opacity:.7;font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Variance</div>'
+    + '<div style="font-size:22px;font-weight:900;color:'+deltaClr+'">'
+    + (avgDelta !== null ? (avgDelta >= 0 ? '+' : '') + avgDelta.toFixed(1) + '%' : '\u2014') + '</div>'
+    + '<div style="font-size:11px;opacity:.65;margin-top:3px">'+ $v(avg26 - avg25) + ' difference</div></div>';
+
+  /* Historical avg monthly: 2024, 2023, 2022 */
+  var histYrs = ['2024','2023','2022'];
+  histYrs.forEach(function(yr){
+    var yAvg = yearAvgs[yr] || 0;
+    var yDelta = yAvg > 0 ? ((avg25 - yAvg) / yAvg * 100) : null;
+    avgHtml += _avgCard('Avg Monthly '+yr, yAvg,
+      yDelta !== null ? (yDelta>=0?'+':'')+yDelta.toFixed(1)+'% to 2025' : '', '#64748B');
+  });
+
+  avgHtml += '</div></div>';
+
+  /* ── Build Period Filter Bar ── */
+  var filterHtml = '<div id="rv3-filter-bar" style="display:flex;gap:8px;align-items:center;margin-bottom:16px;flex-wrap:wrap">'
+    + '<div style="font-size:12px;font-weight:700;color:'+N+';margin-right:6px">\uD83D\uDD0D View:</div>'
+    + _filterBtn('YTD', 'ytd', true)
+    + _filterBtn('Monthly Avg', 'monthly', false)
+    + _filterBtn('Avg Yearly', 'avgyearly', false)
+    + '<div style="margin-left:auto;font-size:11px;color:#94A3B8">Click a view to change the BU comparison below</div>'
+    + '</div>';
+
+  /* ── Build Period-aware BU Comparison Table ── */
+  var buTableHtml = '<div id="rv3-bu-view" style="background:#fff;border-radius:14px;padding:22px;margin-bottom:16px;box-shadow:0 2px 10px rgba(0,0,0,.06);border:1px solid #E2E8F0">'
+    + '<div id="rv3-bu-title" style="font-size:14px;font-weight:800;color:'+N+';margin-bottom:4px">Revenue by Business Unit \u2014 YTD View</div>'
+    + '<div id="rv3-bu-sub" style="font-size:11px;color:#94A3B8;margin-bottom:14px">Click any BU for full KPI drilldown with detailed figures.</div>'
+    + '<div id="rv3-bu-table"></div>'
+    + '</div>';
+
+  /* ── Insert into page after first KPI row ── */
+  var kpiRow = pg.querySelector('[style*="grid-template-columns:repeat(6"]') || pg.querySelector('.kpi-grid');
+  if(kpiRow && kpiRow.nextSibling){
+    var wrapper = document.createElement('div');
+    wrapper.innerHTML = avgHtml + filterHtml + buTableHtml;
+    /* Insert all children after the KPI row */
+    var frag = document.createDocumentFragment();
+    while(wrapper.firstChild) frag.appendChild(wrapper.firstChild);
+    kpiRow.parentNode.insertBefore(frag, kpiRow.nextSibling);
+  } else {
+    pg.insertAdjacentHTML('afterbegin', avgHtml + filterHtml + buTableHtml);
+  }
+
+  /* Render initial view */
+  _rv3RenderBUView('ytd');
+};
+
+/* ── Avg card builder ── */
+function _avgCard(lbl, val, sub, clr){
+  return '<div style="background:rgba(255,255,255,.08);border-radius:12px;padding:14px 16px;border:1px solid rgba(255,255,255,.12);cursor:pointer" '
+    + 'onmouseover="this.style.background=\'rgba(255,255,255,.14)\'" onmouseout="this.style.background=\'rgba(255,255,255,.08)\'">'
+    + '<div style="font-size:10px;opacity:.7;font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">'+lbl+'</div>'
+    + '<div style="font-size:22px;font-weight:900;color:'+clr+'">'+$v(val)+'</div>'
+    + (sub ? '<div style="font-size:11px;opacity:.65;margin-top:3px">'+sub+'</div>' : '')
+    + '</div>';
+}
+
+/* ── Filter button builder ── */
+function _filterBtn(label, mode, active){
+  var id = 'rv3-btn-'+mode;
+  return '<button id="'+id+'" onclick="window._rv3SetPeriod(\''+mode+'\')" '
+    + 'style="padding:8px 18px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;transition:.2s;'
+    + 'border:2px solid '+(active ? N : '#CBD5E1')+';'
+    + 'background:'+(active ? N : '#fff')+';'
+    + 'color:'+(active ? '#fff' : '#64748B')+'">'
+    + label + '</button>';
+}
+
+/* ═══════ 2. PERIOD FILTER LOGIC ═══════ */
+window._rv3SetPeriod = function(mode){
+  /* Update button states */
+  ['ytd','monthly','avgyearly'].forEach(function(m){
+    var btn = document.getElementById('rv3-btn-'+m);
+    if(!btn) return;
+    var isActive = m === mode;
+    btn.style.border = '2px solid '+(isActive ? N : '#CBD5E1');
+    btn.style.background = isActive ? N : '#fff';
+    btn.style.color = isActive ? '#fff' : '#64748B';
+  });
+  _rv3RenderBUView(mode);
+};
+
+function _rv3RenderBUView(mode){
+  var el = document.getElementById('rv3-bu-table');
+  var titleEl = document.getElementById('rv3-bu-title');
+  var subEl = document.getElementById('rv3-bu-sub');
+  if(!el) return;
+
+  var bra = _D().bu_rev_all || {};
+  var bj  = _D().bu_jan26 || {};
+  var bjBU = bj.BusinessUnit || [];
+  var bjRev = bj.Revenue || [];
+  var kpis = _fp().group_kpis || {};
+  var ga = _D().group_annual || {};
+  var gaYrs = ga.Year || [];
+  var gaRevs = ga.Revenue || [];
+
+  /* Get BU GP data for drilldowns */
+  var bgp = _D().bu_gp_all || {};
+  var bed = _D().bu_ebitda_all || {};
+
+  var bus = Object.keys(bra).filter(function(bu){return bu!=='Corporate';}).sort(function(a,b){
+    return ((bra[b]||{})['2025']||0) - ((bra[a]||{})['2025']||0);
+  });
+
+  var rows = [];
+  var cols = [];
+
+  if(mode === 'ytd'){
+    titleEl.textContent = 'Revenue by Business Unit \u2014 YTD Comparison';
+    subEl.textContent = 'YTD Jan 2026 vs FY 2025 total. Click any BU for full drilldown.';
+    rows = bus.map(function(bu){
+      var data = bra[bu] || {};
+      var rev25 = data['2025'] || 0;
+      var ji = bjBU.indexOf(bu);
+      var jan26 = ji >= 0 ? (bjRev[ji]||0) : 0;
+      var avg25 = rev25 / 12;
+      var delta = avg25 > 0 ? ((jan26 - avg25) / avg25 * 100).toFixed(1) : '\u2014';
+      return {bu:bu, fy25: rev25, ytd26: jan26, avg25: avg25, delta: delta, _buName: bu};
+    });
+    var totFy25 = rows.reduce(function(s,r){return s+r.fy25;},0);
+    var totYtd26 = rows.reduce(function(s,r){return s+r.ytd26;},0);
+    var totAvg25 = totFy25/12;
+    rows.push({bu:'\u25FC TOTAL', fy25:totFy25, ytd26:totYtd26, avg25:totAvg25,
+      delta:totAvg25>0?((totYtd26-totAvg25)/totAvg25*100).toFixed(1):'\u2014', _hi:true});
+    cols = [
+      {l:'Business Unit',k:'bu'},
+      {l:'FY 2025',k:'fy25',r:true,fmt:$f,clr:N},
+      {l:'YTD Jan 2026',k:'ytd26',r:true,fmt:$f,clr:TE},
+      {l:'Avg Monthly 2025',k:'avg25',r:true,fmt:$v,clr:BL},
+      {l:'vs Avg Monthly',k:'delta',r:true,fmtDelta:true}
+    ];
+
+  } else if(mode === 'monthly'){
+    titleEl.textContent = 'Revenue by Business Unit \u2014 Avg Monthly Comparison';
+    subEl.textContent = 'Average monthly revenue by year. Shows how each BU\'s monthly run-rate has evolved.';
+    var yrs = ['2021','2022','2023','2024','2025'];
+    rows = bus.map(function(bu){
+      var data = bra[bu] || {};
+      var r = {bu:bu, _buName:bu};
+      yrs.forEach(function(y){ r['m'+y] = (data[y]||0)/12; });
+      var ji = bjBU.indexOf(bu);
+      r.m2026 = ji >= 0 ? (bjRev[ji]||0)/1 : 0; /* 1 month so far */
+      r.delta = r.m2025 > 0 ? ((r.m2026 - r.m2025)/r.m2025*100).toFixed(1) : '\u2014';
+      return r;
+    });
+    var totRow = {bu:'\u25FC TOTAL', _hi:true};
+    yrs.forEach(function(y){ totRow['m'+y] = rows.reduce(function(s,r){return s+(r['m'+y]||0);},0); });
+    totRow.m2026 = rows.reduce(function(s,r){return s+(r.m2026||0);},0);
+    totRow.delta = totRow.m2025>0?((totRow.m2026-totRow.m2025)/totRow.m2025*100).toFixed(1):'\u2014';
+    rows.push(totRow);
+    cols = [{l:'Business Unit',k:'bu'}];
+    yrs.forEach(function(y){ cols.push({l:'Avg/Mo '+y,k:'m'+y,r:true,fmt:$v,clr:'#64748B'}); });
+    cols.push({l:'Avg/Mo 2026',k:'m2026',r:true,fmt:$v,clr:TE});
+    cols.push({l:'\u0394 25\u219226',k:'delta',r:true,fmtDelta:true});
+
+  } else { /* avgyearly */
+    titleEl.textContent = 'Revenue by Business Unit \u2014 Average Yearly Comparison';
+    subEl.textContent = 'Full-year revenue by BU (2021\u20132025) + annualised 2026 estimate.';
+    var yrs = ['2021','2022','2023','2024','2025'];
+    rows = bus.map(function(bu){
+      var data = bra[bu] || {};
+      var r = {bu:bu, _buName:bu};
+      yrs.forEach(function(y){ r['y'+y] = data[y]||0; });
+      var ji = bjBU.indexOf(bu);
+      var jan26 = ji >= 0 ? (bjRev[ji]||0) : 0;
+      r.ann26 = jan26 * 12; /* Annualised from Jan 2026 */
+      r.cagr = r.y2021 > 0 ? ((Math.pow(r.y2025/r.y2021, 1/4)-1)*100).toFixed(1)+'%' : '\u2014';
+      return r;
+    });
+    var totRow = {bu:'\u25FC TOTAL', _hi:true};
+    yrs.forEach(function(y){ totRow['y'+y] = rows.reduce(function(s,r){return s+(r['y'+y]||0);},0); });
+    totRow.ann26 = rows.reduce(function(s,r){return s+(r.ann26||0);},0);
+    totRow.cagr = totRow.y2021>0?((Math.pow(totRow.y2025/totRow.y2021,1/4)-1)*100).toFixed(1)+'%':'\u2014';
+    rows.push(totRow);
+    cols = [{l:'Business Unit',k:'bu'}];
+    yrs.forEach(function(y){ cols.push({l:y,k:'y'+y,r:true,fmt:$f,clr:N}); });
+    cols.push({l:'2026 (Ann.)',k:'ann26',r:true,fmt:$f,clr:TE});
+    cols.push({l:'CAGR 21\u201925',k:'cagr',r:true});
+  }
+
+  /* Render table */
+  var h = '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">';
+  h += '<thead><tr>' + cols.map(function(c){
+    return '<th style="background:'+N+';color:#fff;padding:9px 12px;text-align:'+(c.r?'right':'left')+';white-space:nowrap;font-size:11px;font-weight:700;letter-spacing:.3px">'+c.l+'</th>';
+  }).join('') + '</tr></thead><tbody>';
+
+  rows.forEach(function(r, i){
+    var bg = i % 2 === 0 ? '#FAFBFE' : '#fff';
+    h += '<tr style="background:'+bg+';transition:.1s" onmouseover="this.style.background=\'#EFF6FF\'" onmouseout="this.style.background=\''+bg+'\'">';
+    cols.forEach(function(c, ci){
+      var v = r[c.k];
+      var d;
+      if(c.fmtDelta){
+        var numV = parseFloat(v);
+        if(isNaN(numV)) d = '\u2014';
+        else {
+          var clr2 = numV >= 0 ? GR : RD;
+          d = '<span style="font-weight:700;color:'+clr2+'">'+(numV>=0?'\u25B2':'\u25BC')+Math.abs(numV).toFixed(1)+'%</span>';
+        }
+      } else {
+        d = c.fmt ? c.fmt(v) : (v !== null && v !== undefined ? v : '\u2014');
+      }
+      var st = 'padding:8px 12px;border-bottom:1px solid #F1F5F9;text-align:'+(c.r?'right':'left')+';';
+      if(c.clr && typeof v === 'number') st += 'color:'+(v<0?RD:c.clr)+';font-weight:600;';
+      if(r._hi) st += 'font-weight:800;background:#F0F9FF;';
+      /* BU name column — clickable drilldown */
+      if(ci === 0 && !r._hi && r._buName){
+        d = '<a href="javascript:void(0)" onclick="window._rv3DrillBU(\''+r._buName.replace(/'/g,"\\'")+'\')" '
+          + 'style="color:'+BL+';text-decoration:none;font-weight:700;display:flex;align-items:center;gap:4px">'
+          + r.bu + ' <span style="font-size:9px;opacity:.5">DRILL\u2197</span></a>';
+      }
+      h += '<td style="'+st+'">'+d+'</td>';
+    });
+    h += '</tr>';
+  });
+  h += '</tbody></table></div>';
+  el.innerHTML = h;
+}
+
+/* ═══════ 3. RICH BU DRILLDOWN POPUP ═══════ */
+window._rv3DrillBU = function(bu){
+  var bra = _D().bu_rev_all || {};
+  var bgp = _D().bu_gp_all || {};
+  var bed = _D().bu_ebitda_all || {};
+  var bj  = _D().bu_jan26 || {};
+  var bjBU = bj.BusinessUnit || [];
+  var bjRev = bj.Revenue || [];
+  var kpis = _fp().group_kpis || {};
+  var ga = _D().group_annual || {};
+  var gaRevs = ga.Revenue || [];
+  var gaYrs = ga.Year || [];
+
+  var data = bra[bu] || {};
+  var gpData = bgp[bu] || {};
+  var ebData = bed[bu] || {};
+  var yrs = Object.keys(data).sort();
+  var ji = bjBU.indexOf(bu);
+  var jan26Rev = ji >= 0 ? (bjRev[ji]||0) : 0;
+
+  /* Revenue for key years */
+  var rev25 = data['2025'] || 0;
+  var rev24 = data['2024'] || 0;
+  var rev23 = data['2023'] || 0;
+  var rev22 = data['2022'] || 0;
+  var rev21 = data['2021'] || 0;
+
+  /* Averages */
+  var avg25 = rev25 / 12;
+  var avg26 = jan26Rev / 1;
+
+  /* Group totals for share calculation */
+  var grpRev25 = kpis.rev_2025 || 195318802;
+  var grpRev26 = kpis.rev_jan26 || 15781117;
+
+  /* YoY growth */
+  var yoy2524 = rev24 > 0 ? ((rev25 - rev24) / rev24 * 100) : null;
+  var yoy26vs25avg = avg25 > 0 ? ((avg26 - avg25) / avg25 * 100) : null;
+
+  /* GP & EBITDA for 2025 */
+  var gp25 = gpData['2025'] || 0;
+  var eb25 = ebData['2025'] || 0;
+  var gpMargin = rev25 > 0 ? (gp25 / rev25 * 100) : 0;
+  var ebMargin = rev25 > 0 ? (eb25 / rev25 * 100) : 0;
+
+  /* Rank among all BUs by 2025 revenue */
+  var allBus = Object.keys(bra).filter(function(b){return b!=='Corporate';});
+  var ranked = allBus.map(function(b){return{bu:b,val:(bra[b]||{})['2025']||0};}).sort(function(a,b){return b.val-a.val;});
+  var rank = 1;
+  for(var ri=0;ri<ranked.length;ri++){if(ranked[ri].bu===bu){rank=ri+1;break;}}
+
+  /* CAGR */
+  var cagr = rev21 > 0 && rev25 > 0 ? ((Math.pow(rev25/rev21,1/4)-1)*100).toFixed(1) : null;
+
+  /* ── Build KPI cards ── */
+  var h = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:10px;margin-bottom:20px">';
+  h += _kpi('FY 2025 Revenue', rev25, grpRev25 > 0 ? (rev25/grpRev25*100).toFixed(1)+'% of Group' : '', N);
+  h += _kpi('YTD Jan 2026', jan26Rev, grpRev26 > 0 ? (jan26Rev/grpRev26*100).toFixed(1)+'% of Group' : '', TE);
+  h += _kpi('Avg Monthly 2025', avg25, 'FY2025 / 12', BL);
+  h += _kpi('Avg Monthly 2026', avg26,
+    yoy26vs25avg !== null ? (yoy26vs25avg>=0?'+':'')+yoy26vs25avg.toFixed(1)+'% vs 2025' : '', TE);
+  h += _kpi('YoY Growth 24\u219225',
+    yoy2524 !== null ? (yoy2524>=0?'+':'')+yoy2524.toFixed(1)+'%' : '\u2014',
+    '', yoy2524 !== null && yoy2524 >= 0 ? GR : RD, true);
+  h += _kpi('GP Margin 2025',
+    gpMargin.toFixed(1)+'%', gp25 > 0 ? 'GP: '+$v(gp25) : '', GR, true);
+  h += _kpi('EBITDA Margin 2025',
+    ebMargin.toFixed(1)+'%', eb25 > 0 ? 'EBITDA: '+$v(eb25) : '', PU, true);
+  h += _kpi('Rank #'+rank+' of '+ranked.length, $v(rev25),
+    cagr !== null ? 'CAGR 21\u201925: '+cagr+'%' : '', OR);
+  h += '</div>';
+
+  /* ── Yearly History Table ── */
+  h += '<div style="font-size:13px;font-weight:800;color:'+N+';margin-bottom:8px">Revenue History \u2014 '+bu+'</div>';
+  h += '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">';
+  h += '<thead><tr>';
+  h += '<th style="background:'+N+';color:#fff;padding:8px 12px;text-align:left">Year</th>';
+  h += '<th style="background:'+N+';color:#fff;padding:8px 12px;text-align:right">Revenue</th>';
+  h += '<th style="background:'+N+';color:#fff;padding:8px 12px;text-align:right">Avg Monthly</th>';
+  h += '<th style="background:'+N+';color:#fff;padding:8px 12px;text-align:right">Gross Profit</th>';
+  h += '<th style="background:'+N+';color:#fff;padding:8px 12px;text-align:right">GP Margin</th>';
+  h += '<th style="background:'+N+';color:#fff;padding:8px 12px;text-align:right">YoY Growth</th>';
+  h += '<th style="background:'+N+';color:#fff;padding:8px 12px;text-align:right">% of Group</th>';
+  h += '</tr></thead><tbody>';
+
+  var tableYrs = yrs.slice();
+  /* Compute group totals per year */
+  var grpByYr = {};
+  gaYrs.forEach(function(yr,i){ grpByYr[yr] = gaRevs[i]||0; });
+
+  var prevRev = 0;
+  tableYrs.forEach(function(yr, i){
+    var rev = data[yr] || 0;
+    var gp = gpData[yr] || 0;
+    var gpM = rev > 0 ? (gp/rev*100).toFixed(1)+'%' : '\u2014';
+    var avgM = rev / 12;
+    var yoy = prevRev > 0 ? ((rev-prevRev)/prevRev*100).toFixed(1) : null;
+    var grpTot = grpByYr[yr] || 0;
+    var share = grpTot > 0 ? (rev/grpTot*100).toFixed(1)+'%' : '\u2014';
+    var bg = i%2===0 ? '#FAFBFE' : '#fff';
+    h += '<tr style="background:'+bg+'">';
+    h += '<td style="padding:8px 12px;font-weight:700">'+yr+'</td>';
+    h += '<td style="padding:8px 12px;text-align:right;font-weight:700;color:'+N+'">'+$f(rev)+'</td>';
+    h += '<td style="padding:8px 12px;text-align:right;color:'+BL+'">'+$v(avgM)+'</td>';
+    h += '<td style="padding:8px 12px;text-align:right;color:'+GR+'">'+$f(gp)+'</td>';
+    h += '<td style="padding:8px 12px;text-align:right">'+gpM+'</td>';
+    h += '<td style="padding:8px 12px;text-align:right">';
+    if(yoy !== null){
+      var yoyN = parseFloat(yoy);
+      h += '<span style="font-weight:700;color:'+(yoyN>=0?GR:RD)+'">'+(yoyN>=0?'\u25B2':'\u25BC')+Math.abs(yoyN).toFixed(1)+'%</span>';
+    } else { h += '\u2014'; }
+    h += '</td>';
+    h += '<td style="padding:8px 12px;text-align:right">'+share+'</td>';
+    h += '</tr>';
+    prevRev = rev;
+  });
+
+  /* Jan 2026 row */
+  var jan26Yoy = avg25 > 0 ? ((jan26Rev - avg25)/avg25*100).toFixed(1) : null;
+  h += '<tr style="background:#EFF6FF;font-weight:700">';
+  h += '<td style="padding:8px 12px;color:'+TE+'">Jan 2026</td>';
+  h += '<td style="padding:8px 12px;text-align:right;color:'+TE+'">'+$f(jan26Rev)+'</td>';
+  h += '<td style="padding:8px 12px;text-align:right;color:'+TE+'">'+$v(jan26Rev)+'</td>';
+  h += '<td style="padding:8px 12px;text-align:right">\u2014</td>';
+  h += '<td style="padding:8px 12px;text-align:right">\u2014</td>';
+  h += '<td style="padding:8px 12px;text-align:right">';
+  if(jan26Yoy !== null){
+    var j26N = parseFloat(jan26Yoy);
+    h += '<span style="color:'+(j26N>=0?GR:RD)+'">'+(j26N>=0?'\u25B2':'\u25BC')+Math.abs(j26N).toFixed(1)+'% vs Avg Mo</span>';
+  }
+  h += '</td>';
+  h += '<td style="padding:8px 12px;text-align:right">'+(grpRev26>0?(jan26Rev/grpRev26*100).toFixed(1)+'%':'\u2014')+'</td>';
+  h += '</tr>';
+
+  h += '</tbody></table></div>';
+
+  /* Use the V2 modal */
+  if(typeof window._rv2M === 'function'){
+    window._rv2M(bu + ' \u2014 Revenue Deep Dive', 'Al Majal Group \u2014 Full BU Analysis', h);
+  }
+};
+
+/* ── Mini KPI card for drilldown popup ── */
+function _kpi(lbl, val, sub, clr, isText){
+  var display = isText ? (typeof val === 'string' ? val : $v(val)) : $v(val);
+  return '<div style="background:linear-gradient(135deg,'+clr+'10,'+clr+'05);border:1px solid '+clr+'22;border-radius:10px;padding:12px 14px">'
+    + '<div style="font-size:10px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px">'+lbl+'</div>'
+    + '<div style="font-size:18px;font-weight:900;color:'+clr+'">'+display+'</div>'
+    + (sub ? '<div style="font-size:11px;color:#94A3B8;margin-top:2px">'+sub+'</div>' : '')
+    + '</div>';
+}
+
+})();
 </script>
 </body>
 </html>
